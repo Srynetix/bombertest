@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://assets/kenney_sokobanpack/Tilesheet/sokoban_tilesheet.png" type="Texture" id=1]
+[ext_resource path="res://scenes/Crate.gd" type="Script" id=2]
+
+[node name="Crate" type="Sprite"]
+texture = ExtResource( 1 )
+region_enabled = true
+region_rect = Rect2( 64, 0, 64, 64 )
+script = ExtResource( 2 )
