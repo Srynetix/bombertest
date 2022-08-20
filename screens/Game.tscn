@@ -36,4 +36,6 @@ format = 1
 
 [node name="Bubbles" type="Node2D" parent="."]
 
+[node name="ItemTimer" type="Timer" parent="."]
+
 [node name="HUD" parent="." instance=ExtResource( 4 )]

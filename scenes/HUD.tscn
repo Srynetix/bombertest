@@ -22,24 +22,12 @@ font_data = ExtResource( 1 )
 [sub_resource type="Animation" id=2]
 length = 0.001
 tracks/0/type = "value"
-tracks/0/path = NodePath("MarginContainer/TimeLimit:rect_scale")
+tracks/0/path = NodePath("MarginContainer/TimeLimit:anchor_top")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/imported = false
 tracks/0/enabled = true
 tracks/0/keys = {
-"times": PoolRealArray( 0 ),
-"transitions": PoolRealArray( 1 ),
-"update": 0,
-"values": [ Vector2( 1, 1 ) ]
-}
-tracks/1/type = "value"
-tracks/1/path = NodePath("MarginContainer/TimeLimit:anchor_top")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/keys = {
 "times": PoolRealArray( 0 ),
 "transitions": PoolRealArray( 1 ),
 "update": 0,
@@ -48,30 +36,19 @@ tracks/1/keys = {
 
 [sub_resource type="Animation" id=3]
 resource_name = "moving"
+length = 2.0
 loop = true
 tracks/0/type = "value"
-tracks/0/path = NodePath("MarginContainer/TimeLimit:rect_scale")
+tracks/0/path = NodePath("MarginContainer/TimeLimit:anchor_top")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/imported = false
 tracks/0/enabled = true
 tracks/0/keys = {
-"times": PoolRealArray( 0, 0.2, 1 ),
-"transitions": PoolRealArray( 1, 1, 1 ),
+"times": PoolRealArray( 0, 1, 2 ),
+"transitions": PoolRealArray( 4.92458, 5.27803, 1 ),
 "update": 0,
-"values": [ Vector2( 1, 1 ), Vector2( 1, 0.5 ), Vector2( 1, 1 ) ]
-}
-tracks/1/type = "value"
-tracks/1/path = NodePath("MarginContainer/TimeLimit:anchor_top")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/keys = {
-"times": PoolRealArray( 0, 0.5, 1 ),
-"transitions": PoolRealArray( 1, 1, 1 ),
-"update": 0,
-"values": [ 0.0, 0.1, 0.0 ]
+"values": [ 0.0, 0.05, 0.0 ]
 }
 
 [sub_resource type="Animation" id=6]
@@ -140,14 +117,15 @@ custom_constants/margin_left = 20
 custom_constants/margin_bottom = 20
 
 [node name="TimeLimit" type="Label" parent="MarginContainer"]
-margin_left = 401.0
+anchor_bottom = 0.1
+margin_left = 532.0
 margin_top = 20.0
-margin_right = 878.0
+margin_right = 748.0
 margin_bottom = 128.0
 size_flags_horizontal = 4
 size_flags_vertical = 0
 custom_fonts/font = SubResource( 1 )
-text = "Time limit"
+text = "Time"
 
 [node name="Win" type="Label" parent="MarginContainer"]
 margin_left = 640.0

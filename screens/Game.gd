@@ -5,9 +5,11 @@ const CrateScene = preload("res://scenes/Crate.tscn")
 const PlayerScene = preload("res://scenes/Player.tscn")
 const WallScene = preload("res://scenes/Wall.tscn")
 const BombScene = preload("res://scenes/Bomb.tscn")
+const ItemScene = preload("res://scenes/Item.tscn")
 const BubbleScene = preload("res://scenes/Bubble.tscn")
 const ExplosionFXScene = preload("res://scenes/ExplosionFX.tscn")
 
+const ITEM_SPAWN_FREQUENCY = 15
 const TWEEN_SPEED = 0.25
 const GAME_TIME_LIMIT = 120
 var PLAYER_COLOR_ROULETTE = [
@@ -23,15 +25,25 @@ onready var _camera := $Camera as SxFXCamera
 onready var _tiles := $Tiles as Node2D
 onready var _bubbles := $Bubbles as Node2D
 onready var _hud := $HUD as HUD
+onready var _item_timer := $ItemTimer as Timer
 onready var _cell_size := _md_tilemap.cell_size
 
-var _object_coords := {}
-var _object_coords_lookup := {}
 var _player_status := {}
+var _player_items := {}
 var _player_bubbles := {}
 var _logger := SxLog.get_logger("Game")
 var _remaining_time := float(GAME_TIME_LIMIT)
 var _game_running := true
+var _tile_controller: TileController
+
+func _ready() -> void:
+    var rect = _md_tilemap.get_used_rect()
+    _tile_controller = TileController.new(rect.size)
+    _spawn_tiles()
+
+    _item_timer.wait_time = ITEM_SPAWN_FREQUENCY
+    _item_timer.connect("timeout", self, "_spawn_item_at_empty_position")
+    _item_timer.start()
 
 func _spawn_tiles() -> void:
     var last_player_id := 1
@@ -55,7 +67,7 @@ func _spawn_tiles() -> void:
             tilemap.set_cellv(pos, -1)
 
         elif tile_name == "bomb":
-            _spawn_bomb(pos)
+            _spawn_bomb(pos, false)
             tilemap.set_cellv(pos, -1)
 
     _camera.set_limit_from_rect(tilemap_rect.expand(_cell_size * tilemap_rect.end))
@@ -80,29 +92,43 @@ func _spawn_player(pos: Vector2, player_index: int) -> void:
     player.player_color = SxRand.choice_array(PLAYER_COLOR_ROULETTE)
     player.connect("move", self, "_on_player_movement", [ player ])
     player.connect("spawn_bomb", self, "_on_player_spawn_bomb", [ player ])
+    player.connect("push_bomb", self, "_on_player_push_bomb", [ player ])
     player.connect("exploded", self, "_on_player_dead", [ player ])
-    player.connect("tree_exiting", self, "_remove_object_pos", [ player ])
+    player.connect("tree_exiting", _tile_controller, "remove_node_position", [ player ])
     _tiles.get_node("Player").add_child(player)
-    _set_object_pos(player, pos)
+    _tile_controller.set_node_position(player, pos)
 
     var bubble: Bubble = BubbleScene.instance()
     bubble.player_index = player_index
+    bubble.camera = _camera
+    bubble.target_node = player
     _bubbles.add_child(bubble)
     _player_bubbles[player_index] = bubble
     _player_status[player_index] = player
+    _player_items[player_index] = {}
 
 func _spawn_crate(pos: Vector2) -> void:
     var crate: Crate = CrateScene.instance()
     crate.position = _get_snapped_pos(pos)
-    crate.connect("tree_exiting", self, "_remove_object_pos", [ crate ])
+    crate.connect("tree_exiting", _tile_controller, "remove_node_position", [ crate ])
     _tiles.get_node("BelowPlayer").add_child(crate)
-    _set_object_pos(crate, pos)
+    _tile_controller.set_node_position(crate, pos)
 
 func _spawn_wall(pos: Vector2) -> void:
     var wall: Wall = WallScene.instance()
     wall.position = _get_snapped_pos(pos)
     _tiles.get_node("BelowPlayer").add_child(wall)
-    _set_object_pos(wall, pos)
+    _tile_controller.set_node_position(wall, pos)
+
+func _spawn_item_at_empty_position() -> void:
+    var item_type := Item.random_item_type()
+    var pos := _tile_controller.get_random_empty_position()
+    var item: Item = ItemScene.instance()
+    item.item_type = item_type
+    item.position = _get_snapped_pos(pos)
+    item.connect("tree_exiting", _tile_controller, "remove_node_position", [ item ])
+    _tiles.get_node("BelowPlayer").add_child(item)
+    _tile_controller.set_node_position(item, pos)
 
 func _get_snapped_pos(map_pos: Vector2) -> Vector2:
     return _md_tilemap.map_to_world(map_pos) + _cell_size / 2
@@ -113,44 +139,31 @@ func _tween_to_snapped_pos(object: Node2D, map_pos: Vector2) -> void:
     tween.tween_property(object, "position", snapped_pos, TWEEN_SPEED)
     yield(tween, "finished")
 
-func _get_object_pos(object: Node) -> Vector2:
-    return _object_coords[object.get_path()]
-
-func _set_object_pos(object: Node, pos: Vector2) -> void:
-    _remove_object_pos(object)
-    _object_coords[object.get_path()] = pos
-
-    if _object_coords_lookup.has(pos):
-        _object_coords_lookup[pos].append(object)
-    else:
-        _object_coords_lookup[pos] = [object]
-
-func _get_objects_at_pos(pos: Vector2) -> Array:
-    if _object_coords_lookup.has(pos):
-        return _object_coords_lookup[pos]
-    return []
-
-func _remove_object_pos(object: Node) -> void:
-    var obj_path = object.get_path()
-    if _object_coords.has(obj_path):
-        var previous_pos = _object_coords[obj_path]
-        var array: Array = _object_coords_lookup[previous_pos]
-        array.erase(object)
-        if len(array) == 0:
-            _object_coords_lookup.erase(previous_pos)
-        _object_coords.erase(obj_path)
-
-func _can_move_to_pos(_object: Node, pos: Vector2) -> bool:
-    var targets := _get_objects_at_pos(pos)
-    return len(targets) == 0
+func _can_move_to_position(source: Node2D, pos: Vector2) -> bool:
+    var targets := _tile_controller.get_nodes_at_position(pos)
+    var can_move := true
+    for target in targets:
+        if source is Player && target is Item:
+            pass
+        else:
+            can_move = false
+            break
+    return can_move
 
 func _on_player_movement(direction: int, player: Player) -> void:
     player.lock()
 
-    var current_pos := _get_object_pos(player)
+    var current_pos := _tile_controller.get_node_position(player)
     var next_pos := _add_direction_to_pos(current_pos, direction)
-    if _can_move_to_pos(player, next_pos):
-        _set_object_pos(player, next_pos)
+    if _can_move_to_position(player, next_pos):
+        var targets := _tile_controller.get_nodes_at_position(next_pos)
+        for target in targets:
+            if target is Item:
+                var item := target as Item
+                item.pickup()
+                _player_items[player.player_index][item.item_type] = true
+
+        _tile_controller.set_node_position(player, next_pos)
         yield(_tween_to_snapped_pos(player, next_pos), "completed")
 
     # Player can be destroyed
@@ -158,8 +171,37 @@ func _on_player_movement(direction: int, player: Player) -> void:
         player.unlock()
 
 func _on_player_spawn_bomb(player: Player) -> void:
-    var current_pos := _get_object_pos(player)
-    _spawn_bomb(current_pos)
+    var current_pos := _tile_controller.get_node_position(player)
+    _spawn_bomb(current_pos, _get_player_item_status(player, Item.ItemType.PowerBomb))
+
+func _get_player_item_status(player: Player, item_type: int) -> bool:
+    if item_type in _player_items[player.player_index]:
+        return _player_items[player.player_index][item_type]
+    return false
+
+func _on_player_push_bomb(direction: int, player: Player) -> void:
+    # Make sure the player can push
+    if !_get_player_item_status(player, Item.ItemType.Push):
+        return
+
+    var current_pos := _tile_controller.get_node_position(player)
+    var next_pos := _add_direction_to_pos(current_pos, direction)
+
+    # Detect bomb
+    var bomb: Bomb = null
+    for target in _tile_controller.get_nodes_at_position(next_pos):
+        if target is Bomb:
+            bomb = target as Bomb
+            break
+
+    if bomb != null:
+        if !_tile_controller.get_node_locked(bomb):
+            _tile_controller.set_node_locked(bomb, true)
+            var next_bomb_pos := _add_direction_to_pos(next_pos, direction)
+            if _can_move_to_position(bomb, next_bomb_pos):
+                _tile_controller.set_node_position(bomb, next_bomb_pos)
+                yield(_tween_to_snapped_pos(bomb, next_bomb_pos), "completed")
+            _tile_controller.set_node_locked(bomb, false)
 
 func _on_player_dead(player: Player) -> void:
     _player_status.erase(player.player_index)
@@ -168,47 +210,45 @@ func _on_player_dead(player: Player) -> void:
         _hud.show_win(_player_status.keys()[0])
         _stop_game()
 
-func _spawn_bomb(pos: Vector2) -> void:
-    var targets = _get_objects_at_pos(pos)
+func _spawn_bomb(pos: Vector2, is_power_bomb: bool) -> void:
+    var targets = _tile_controller.get_nodes_at_position(pos)
     for target in targets:
         if target is Bomb:
             return
 
     var bomb: Bomb = BombScene.instance()
-    bomb.power_bomb = SxRand.chance_bool(25)
+    bomb.power_bomb = is_power_bomb
     bomb.connect("explode", self, "_on_bomb_explosion", [bomb])
     bomb.position = _get_snapped_pos(pos)
     _tiles.get_node("BelowPlayer").add_child(bomb)
-    _set_object_pos(bomb, pos)
+    _tile_controller.set_node_position(bomb, pos)
 
 func _spawn_explosion(pos: Vector2) -> bool:
-    var targets = _get_objects_at_pos(pos)
+    var targets := _tile_controller.get_nodes_at_position(pos)
     for target in targets:
         if target is Bomb:
             var bomb: Bomb = target
-            _logger.info_m("_spawn_explosion", "Will trigger bomb %s" % bomb)
             bomb.trigger()
         elif target is Crate:
-            var crate: Crate = target
-            _logger.info_m("_spawn_explosion", "Will explode crate %s" % crate)
-            crate.queue_free()
+            target.queue_free()
         elif target is Player:
             var player: Player = target
-            _logger.info_m("_spawn_explosion", "Will explode player %s" % player)
             player.explode()
+        elif target is Item:
+            target.queue_free()
         elif target is Wall:
             return false
 
     var explosion: Node2D = ExplosionFXScene.instance()
-    explosion.connect("tree_exiting", self, "_remove_object_pos", [explosion])
+    explosion.connect("tree_exiting", _tile_controller, "remove_node_position", [explosion])
     explosion.position = _get_snapped_pos(pos)
     _tiles.get_node("AbovePlayer").add_child(explosion)
-    _set_object_pos(explosion, pos)
+    _tile_controller.set_node_position(explosion, pos)
     return true
 
 func _on_bomb_explosion(bomb: Bomb) -> void:
-    var pos = _get_object_pos(bomb)
-    _remove_object_pos(bomb)
+    var pos = _tile_controller.get_node_position(bomb)
+    _tile_controller.remove_node_position(bomb)
     _spawn_explosion(pos)
 
     if bomb.power_bomb:
@@ -240,9 +280,6 @@ func _add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
             return Vector2(pos.x, pos.y + 1)
     return Vector2()
 
-func _ready() -> void:
-    _spawn_tiles()
-
 func _input(event: InputEvent) -> void:
     if event is InputEventKey:
         var event_key = event as InputEventKey
@@ -268,38 +305,3 @@ func _process(delta: float) -> void:
     var vp_size := get_viewport_rect().size
     var half_vp_size := vp_size / 2
     _camera.position = _get_players_center() - half_vp_size
-
-    # If player are out of camera screen, show in bubble
-    for idx in _player_status:
-        var player := _player_status[idx] as Player
-        var player_coords = player.global_position
-        var bubble := _player_bubbles[player.player_index] as Bubble
-        var show_bubble := false
-        var bubble_offset := bubble.get_size() / 1.5
-
-        if player_coords.x > _camera.position.x + vp_size.x:
-            bubble.position.x = _camera.position.x + vp_size.x - bubble_offset.x
-            show_bubble = true
-        elif player_coords.x < _camera.position.x:
-            bubble.position.x = _camera.position.x + bubble_offset.x
-            show_bubble = true
-        else:
-            bubble.position.x = player_coords.x
-
-        if player_coords.y > _camera.position.y + vp_size.y:
-            bubble.position.y = _camera.position.y + vp_size.y - bubble_offset.y
-            show_bubble = true
-        elif player_coords.y < _camera.position.y:
-            bubble.position.y = _camera.position.y + bubble_offset.y
-            show_bubble = true
-        else:
-            bubble.position.y = player_coords.y
-
-        bubble.rotate_towards(player_coords)
-
-        if show_bubble:
-            if !bubble.visible:
-                bubble.fade_in()
-        else:
-            if bubble.visible:
-                bubble.fade_out()

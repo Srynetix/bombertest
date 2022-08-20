@@ -2,7 +2,8 @@ extends Sprite
 class_name Player
 
 signal move(direction)
-signal spawn_bomb(direction)
+signal spawn_bomb()
+signal push_bomb(direction)
 signal exploded()
 
 enum MoveState {
@@ -82,16 +83,21 @@ func _process(_delta: float) -> void:
     if _is_player_action_just_pressed("bomb"):
         _spawn_bomb()
 
-func _move(direction: int) -> void:
-    _direction = direction
-    _move_state = MoveState.MOVING
-    _update_animation_state()
+    if _is_player_action_just_pressed("push"):
+        _push_bomb()
 
+func _move(direction: int) -> void:
     if !_locked:
+        _direction = direction
+        _move_state = MoveState.MOVING
+        _update_animation_state()
         emit_signal("move", _direction)
 
 func _spawn_bomb() -> void:
     emit_signal("spawn_bomb")
+
+func _push_bomb() -> void:
+    emit_signal("push_bomb", _direction)
 
 func lock() -> void:
     _locked = true
