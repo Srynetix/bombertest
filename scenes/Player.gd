@@ -38,22 +38,29 @@ var _direction: int = Direction.DOWN
 var _move_state: int = MoveState.IDLE
 var _locked := false
 var _exploded := false
+var _player_input: PlayerInput
 
 func _ready() -> void:
     self_modulate = player_color
     _label.text = "P%d" % player_index
     _update_animation_state()
 
-func _get_player_action_key(key: String) -> String:
-    return "p%d_%s" % [player_index, key]
+    # Get input
+    if has_node("PlayerInput"):
+        _player_input = get_node("PlayerInput")
+    else:
+        _player_input = LocalPlayerInput.new()
+        _player_input.name = "PlayerInput"
+        _player_input.player_index = player_index
+        add_child(_player_input)
 
 func _is_player_action_pressed(key: String) -> bool:
-    return Input.is_action_pressed(_get_player_action_key(key))
-
-func _is_player_action_just_pressed(key: String) -> bool:
-    return Input.is_action_just_pressed(_get_player_action_key(key))
+    return _player_input.keys[key]
 
 func _process(_delta: float) -> void:
+    if _exploded:
+        return
+
     var direction := Vector2()
 
     if _is_player_action_pressed("move_left"):
@@ -80,10 +87,10 @@ func _process(_delta: float) -> void:
         else:
             _stay_idle()
 
-    if _is_player_action_just_pressed("bomb"):
+    if _is_player_action_pressed("bomb"):
         _spawn_bomb()
 
-    if _is_player_action_just_pressed("push"):
+    if _is_player_action_pressed("push"):
         _push_bomb()
 
 func _move(direction: int) -> void:
@@ -110,7 +117,9 @@ func explode() -> void:
         return
 
     _exploded = true
+    _animation_player.play("explode")
     emit_signal("exploded")
+    yield(_animation_player, "animation_finished")
     queue_free()
 
 func _stay_idle() -> void:

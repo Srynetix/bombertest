@@ -7,3 +7,9 @@ enum Direction {
     UP,
     DOWN
 }
+
+enum GameMode {
+    SOLO,
+    LOCAL,
+    ONLINE
+}

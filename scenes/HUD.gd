@@ -6,7 +6,7 @@ onready var _win := $MarginContainer/Win as Label
 onready var _win_anim_player := $WinAnimationPlayer as AnimationPlayer
 
 func _ready() -> void:
-    pass
+    _time_limit.text = ""
 
 func update_hud(time: float) -> void:
     _time_limit.text = "%d'" % int(time)
@@ -28,3 +28,10 @@ func _show_win_message(msg: String) -> void:
     _win.modulate = color
     _win.rect_pivot_offset = _win.rect_size / 2
     _win_anim_player.play("wins")
+    yield(_win_anim_player, "animation_finished")
+
+func show_ready() -> void:
+    yield(_show_win_message("Ready?"), "completed")
+    yield(_show_win_message("Set?"), "completed")
+    yield(_show_win_message("Go!"), "completed")
+    _win.text = ""
