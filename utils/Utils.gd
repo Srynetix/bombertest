@@ -14,3 +14,6 @@ static func add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
         Direction.DOWN:
             return Vector2(pos.x, pos.y + 1)
     return Vector2()
+
+static func rand_direction() -> int:
+    return SxRand.choice_array([Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN])

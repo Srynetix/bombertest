@@ -102,7 +102,7 @@ func _load_random_level() -> void:
     _fg_tilemap = level.get_node("Foreground") as TileMap
 
     var randomizer := MapRandomizer.new(_bg_tilemap, _md_tilemap)
-    randomizer.randomize(Vector2(30, 20))
+    randomizer.generate(Vector2(30, 20))
 
     _cell_size = _md_tilemap.cell_size
     _map_rect = _md_tilemap.get_used_rect()
@@ -215,6 +215,7 @@ func _spawn_explosion(pos: Vector2) -> bool:
 
     var explosion: Node2D = ExplosionFXScene.instance()
     explosion.connect("tree_exiting", _tile_controller, "remove_node_position", [explosion])
+    explosion.connect("tree_exiting", self, "_detect_endgame")
     explosion.position = _get_snapped_pos(pos)
     _tiles.get_node("BelowPlayer").add_child(explosion)
     _tile_controller.set_node_position(explosion, pos)
@@ -304,6 +305,10 @@ func _on_bomb_explosion(bomb: Bomb) -> void:
         _spawn_explosion(pos + Vector2(0, -1))
         _spawn_explosion(pos + Vector2(0, 1))
 
+#########
+# Helpers
+
+func _detect_endgame() -> void:
     # Check if everyone is alive?
     if _game_running:
         var remaining = _get_remaining_player_indices()
@@ -313,9 +318,6 @@ func _on_bomb_explosion(bomb: Bomb) -> void:
         elif len(remaining) == 0:
             _hud.show_draw()
             _stop_game()
-
-#########
-# Helpers
 
 func _get_snapped_pos(map_pos: Vector2) -> Vector2:
     return _md_tilemap.map_to_world(map_pos) + _cell_size / 2

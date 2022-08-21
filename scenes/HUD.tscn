@@ -6,7 +6,7 @@
 [sub_resource type="DynamicFont" id=1]
 size = 72
 outline_size = 4
-outline_color = Color( 0.454902, 0.454902, 0.454902, 1 )
+outline_color = Color( 0.454902, 0.454902, 0.454902, 0.623529 )
 use_mipmaps = true
 use_filter = true
 font_data = ExtResource( 1 )
@@ -117,13 +117,13 @@ custom_constants/margin_left = 20
 custom_constants/margin_bottom = 20
 
 [node name="TimeLimit" type="Label" parent="MarginContainer"]
-anchor_bottom = 0.1
 margin_left = 532.0
 margin_top = 20.0
 margin_right = 748.0
 margin_bottom = 128.0
 size_flags_horizontal = 4
 size_flags_vertical = 0
+custom_colors/font_color = Color( 1, 1, 1, 0.623529 )
 custom_fonts/font = SubResource( 1 )
 text = "Time"
 

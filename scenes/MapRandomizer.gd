@@ -9,8 +9,9 @@ func _init(background: TileMap, middleground: TileMap) -> void:
     _bg_tilemap = background
     _mg_tilemap = middleground
     _tileset = _mg_tilemap.tile_set
+    randomize()
 
-func randomize(map_size: Vector2) -> void:
+func generate(map_size: Vector2) -> void:
     var bg_tile := _tileset.find_tile_by_name("background")
     var wall_tile := _tileset.find_tile_by_name("wall")
     var crate_tile := _tileset.find_tile_by_name("crate")
