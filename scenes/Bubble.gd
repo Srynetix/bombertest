@@ -1,3 +1,4 @@
+# Unused yet.
 extends Node2D
 class_name Bubble
 
@@ -34,8 +35,8 @@ func _process(_delta: float) -> void:
     var show_bubble := false
     var bubble_offset := get_size() / 1.5
     var target_coords := target_node.position
-    var camera_coords := camera.position
-    var vp_size := get_viewport_rect().size
+    var camera_coords := camera.position * camera.zoom
+    var vp_size := get_viewport_rect().size * camera.zoom
 
     if target_coords.x > camera_coords.x + vp_size.x:
         position.x = camera_coords.x + vp_size.x - bubble_offset.x

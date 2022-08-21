@@ -1,14 +1,20 @@
 extends Object
 class_name TileController
 
+const VEC_INF := Vector2(INF, INF)
+
 var _node_coords := {}
 var _node_coords_lookup := {}
+var _empty_coords := {}
 var _node_status := {}
 var _level_size: Vector2
 var _logger := SxLog.get_logger("TileController")
 
 func _init(level_size: Vector2) -> void:
     _level_size = level_size
+    for x in range(0, _level_size.x):
+        for y in range(0, _level_size.y):
+            _empty_coords[Vector2(x, y)] = true
 
 func get_node_position(node: Node2D) -> Vector2:
     return _node_coords[node]
@@ -21,6 +27,7 @@ func set_node_position(node: Node2D, pos: Vector2) -> void:
         _node_coords_lookup[pos].append(node)
     else:
         _node_coords_lookup[pos] = [node]
+        _empty_coords.erase(pos)
 
 func remove_node_position(node: Node2D) -> void:
     if _node_coords.has(node):
@@ -30,6 +37,7 @@ func remove_node_position(node: Node2D) -> void:
 
         if len(nodes) == 0:
             _node_coords_lookup.erase(previous_pos)
+            _empty_coords[previous_pos] = true
         _node_coords.erase(node)
 
 func get_nodes_at_position(pos: Vector2) -> Array:
@@ -50,11 +58,7 @@ func get_node_locked(node: Node2D) -> bool:
     return false
 
 func get_random_empty_position() -> Vector2:
-    # FIXME: Stupid algorithm, to improve
-    while true:
-        var x := SxRand.range_i(0, int(_level_size.x))
-        var y := SxRand.range_i(0, int(_level_size.y))
-        var vec := Vector2(x, y)
-        if !_node_coords_lookup.has(vec):
-            return vec
-    return Vector2()
+    var empty_coords := _empty_coords.keys()
+    if empty_coords.empty():
+        return VEC_INF
+    return SxRand.choice_array(empty_coords)

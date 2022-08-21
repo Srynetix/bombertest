@@ -23,22 +23,20 @@ onready var _md_tilemap := $Middleground as TileMap
 onready var _fg_tilemap := $Foreground as TileMap
 onready var _camera := $Camera as SxFXCamera
 onready var _tiles := $Tiles as Node2D
-onready var _bubbles := $Bubbles as Node2D
 onready var _hud := $HUD as HUD
 onready var _item_timer := $ItemTimer as Timer
 onready var _cell_size := _md_tilemap.cell_size
+onready var _map_rect := _md_tilemap.get_used_rect()
 
 var _player_status := {}
 var _player_items := {}
-var _player_bubbles := {}
 var _logger := SxLog.get_logger("Game")
 var _remaining_time := float(GAME_TIME_LIMIT)
 var _game_running := true
 var _tile_controller: TileController
 
 func _ready() -> void:
-    var rect = _md_tilemap.get_used_rect()
-    _tile_controller = TileController.new(rect.size)
+    _tile_controller = TileController.new(_map_rect.size)
     _spawn_tiles()
 
     _item_timer.wait_time = ITEM_SPAWN_FREQUENCY
@@ -72,18 +70,18 @@ func _spawn_tiles() -> void:
 
     _camera.set_limit_from_rect(tilemap_rect.expand(_cell_size * tilemap_rect.end))
 
-func _get_players_center() -> Vector2:
+func _get_players_rect() -> Rect2:
     var players := _player_status.values()
     var player_count := len(players)
-    var center := Vector2()
 
     if player_count == 0:
-        return center
+        return Rect2()
 
-    for entry in players:
-        var player := entry as Player
-        center += player.position
-    return center / player_count
+    var rect := Rect2(players[0].position, Vector2.ZERO)
+    for idx in range(1, player_count):
+        var player := players[idx] as Player
+        rect = rect.expand(player.position)
+    return rect
 
 func _spawn_player(pos: Vector2, player_index: int) -> void:
     var player: Player = PlayerScene.instance()
@@ -98,12 +96,6 @@ func _spawn_player(pos: Vector2, player_index: int) -> void:
     _tiles.get_node("Player").add_child(player)
     _tile_controller.set_node_position(player, pos)
 
-    var bubble: Bubble = BubbleScene.instance()
-    bubble.player_index = player_index
-    bubble.camera = _camera
-    bubble.target_node = player
-    _bubbles.add_child(bubble)
-    _player_bubbles[player_index] = bubble
     _player_status[player_index] = player
     _player_items[player_index] = {}
 
@@ -121,8 +113,12 @@ func _spawn_wall(pos: Vector2) -> void:
     _tile_controller.set_node_position(wall, pos)
 
 func _spawn_item_at_empty_position() -> void:
-    var item_type := Item.random_item_type()
     var pos := _tile_controller.get_random_empty_position()
+    if pos == TileController.VEC_INF:
+        # Edge case: no more empty positions
+        return
+
+    var item_type := Item.random_item_type()
     var item: Item = ItemScene.instance()
     item.item_type = item_type
     item.position = _get_snapped_pos(pos)
@@ -143,8 +139,8 @@ func _can_move_to_position(source: Node2D, pos: Vector2) -> bool:
     var targets := _tile_controller.get_nodes_at_position(pos)
     var can_move := true
     for target in targets:
-        if source is Player && target is Item:
-            pass
+        if source is Player && (target is Item || target is ExplosionFX):
+            continue
         else:
             can_move = false
             break
@@ -162,6 +158,10 @@ func _on_player_movement(direction: int, player: Player) -> void:
                 var item := target as Item
                 item.pickup()
                 _player_items[player.player_index][item.item_type] = true
+
+            elif target is ExplosionFX:
+                player.explode()
+                return
 
         _tile_controller.set_node_position(player, next_pos)
         yield(_tween_to_snapped_pos(player, next_pos), "completed")
@@ -205,7 +205,6 @@ func _on_player_push_bomb(direction: int, player: Player) -> void:
 
 func _on_player_dead(player: Player) -> void:
     _player_status.erase(player.player_index)
-    _player_bubbles.erase(player.player_index)
     if len(_player_status) == 1:
         _hud.show_win(_player_status.keys()[0])
         _stop_game()
@@ -260,13 +259,9 @@ func _on_bomb_explosion(bomb: Bomb) -> void:
                     break
     else:
         _spawn_explosion(pos + Vector2(1, 0))
-        _spawn_explosion(pos + Vector2(1, 1))
         _spawn_explosion(pos + Vector2(-1, 0))
-        _spawn_explosion(pos + Vector2(-1, -1))
         _spawn_explosion(pos + Vector2(0, -1))
-        _spawn_explosion(pos + Vector2(1, -1))
         _spawn_explosion(pos + Vector2(0, 1))
-        _spawn_explosion(pos + Vector2(-1, 1))
 
 func _add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
     match direction:
@@ -302,6 +297,18 @@ func _process(delta: float) -> void:
         else:
             _hud.update_hud(_remaining_time)
 
+    _update_camera()
+
+func _update_camera() -> void:
     var vp_size := get_viewport_rect().size
     var half_vp_size := vp_size / 2
-    _camera.position = _get_players_center() - half_vp_size
+    var players_rect = _get_players_rect()
+    var players_center = players_rect.get_center()
+    var players_rect_size = players_rect.size + Vector2(64, 64) * 4
+
+    var ratio_vec = (players_rect_size / vp_size)
+    var max_ratio_comp = max(ratio_vec.x, ratio_vec.y)
+    var clamped_ratio = max(max_ratio_comp, 1)
+    ratio_vec = Vector2(clamped_ratio, clamped_ratio)
+    _camera.position = players_center - half_vp_size
+    _camera.zoom = lerp(_camera.zoom, Vector2(ratio_vec), 0.025)
