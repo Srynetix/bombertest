@@ -9,24 +9,28 @@ const ItemScene = preload("res://scenes/Item.tscn")
 const BubbleScene = preload("res://scenes/Bubble.tscn")
 const ExplosionFXScene = preload("res://scenes/ExplosionFX.tscn")
 
-const ITEM_SPAWN_FREQUENCY = 15
-const TWEEN_SPEED = 0.25
-const GAME_TIME_LIMIT = 120
+const ITEM_SPAWN_FREQUENCY := 15.0
+const MAX_PLAYERS := 2
+const TWEEN_SPEED := 0.25
+const GAME_TIME_LIMIT := 120
+
 var PLAYER_COLOR_ROULETTE = [
     Color.red.lightened(0.5),
     Color.green.lightened(0.5),
-    Color.blue.lightened(0.5)
+    Color.blue.lightened(0.5),
+    Color.greenyellow.lightened(0.5)
 ]
 
-onready var _bg_tilemap := $Background as TileMap
-onready var _md_tilemap := $Middleground as TileMap
-onready var _fg_tilemap := $Foreground as TileMap
 onready var _camera := $Camera as SxFXCamera
 onready var _tiles := $Tiles as Node2D
 onready var _hud := $HUD as HUD
 onready var _item_timer := $ItemTimer as Timer
-onready var _cell_size := _md_tilemap.cell_size
-onready var _map_rect := _md_tilemap.get_used_rect()
+
+var _bg_tilemap: TileMap
+var _md_tilemap: TileMap
+var _fg_tilemap: TileMap
+var _cell_size: Vector2
+var _map_rect: Rect2
 
 var _player_status := {}
 var _player_items := {}
@@ -35,9 +39,40 @@ var _remaining_time := float(GAME_TIME_LIMIT)
 var _game_running := true
 var _tile_controller: TileController
 
+func _load_level(name: String) -> void:
+    var LevelScene := load("res://levels/%s.tscn" % name)
+    var level := LevelScene.instance() as Node2D
+    self.add_child_below_node(_camera, level)
+
+    _bg_tilemap = level.get_node("Background") as TileMap
+    _md_tilemap = level.get_node("Middleground") as TileMap
+    _fg_tilemap = level.get_node("Foreground") as TileMap
+    _cell_size = _md_tilemap.cell_size
+    _map_rect = _md_tilemap.get_used_rect()
+
+func _load_random_level() -> void:
+    var LevelScene := load("res://levels/MapData.tscn")
+    var level := LevelScene.instance() as Node2D
+    self.add_child_below_node(_camera, level)
+
+    _bg_tilemap = level.get_node("Background") as TileMap
+    _md_tilemap = level.get_node("Middleground") as TileMap
+    _fg_tilemap = level.get_node("Foreground") as TileMap
+
+    var randomizer := MapRandomizer.new(_bg_tilemap, _md_tilemap)
+    randomizer.randomize(Vector2(30, 20))
+
+    _cell_size = _md_tilemap.cell_size
+    _map_rect = _md_tilemap.get_used_rect()
+
 func _ready() -> void:
+    # _load_level("Map01")
+    # _load_level("Map02")
+    _load_random_level()
+
     _tile_controller = TileController.new(_map_rect.size)
     _spawn_tiles()
+    _prepare_camera()
 
     _item_timer.wait_time = ITEM_SPAWN_FREQUENCY
     _item_timer.connect("timeout", self, "_spawn_item_at_empty_position")
@@ -46,7 +81,6 @@ func _ready() -> void:
 func _spawn_tiles() -> void:
     var last_player_id := 1
     var tilemap := _md_tilemap
-    var tilemap_rect := tilemap.get_used_rect()
     for pos in tilemap.get_used_cells():
         var tile_idx := tilemap.get_cellv(pos)
         var tile_name := tilemap.tile_set.tile_get_name(tile_idx)
@@ -54,7 +88,7 @@ func _spawn_tiles() -> void:
         if tile_name == "player":
             _spawn_player(pos, last_player_id)
             tilemap.set_cellv(pos, -1)
-            last_player_id += 1
+            last_player_id = wrapi(last_player_id + 1, 1, MAX_PLAYERS + 1)
 
         elif tile_name == "crate":
             _spawn_crate(pos)
@@ -67,21 +101,6 @@ func _spawn_tiles() -> void:
         elif tile_name == "bomb":
             _spawn_bomb(pos, false)
             tilemap.set_cellv(pos, -1)
-
-    _camera.set_limit_from_rect(tilemap_rect.expand(_cell_size * tilemap_rect.end))
-
-func _get_players_rect() -> Rect2:
-    var players := _player_status.values()
-    var player_count := len(players)
-
-    if player_count == 0:
-        return Rect2()
-
-    var rect := Rect2(players[0].position, Vector2.ZERO)
-    for idx in range(1, player_count):
-        var player := players[idx] as Player
-        rect = rect.expand(player.position)
-    return rect
 
 func _spawn_player(pos: Vector2, player_index: int) -> void:
     var player: Player = PlayerScene.instance()
@@ -96,8 +115,8 @@ func _spawn_player(pos: Vector2, player_index: int) -> void:
     _tiles.get_node("Player").add_child(player)
     _tile_controller.set_node_position(player, pos)
 
-    _player_status[player_index] = player
-    _player_items[player_index] = {}
+    _player_status[player] = true
+    _player_items[player] = {}
 
 func _spawn_crate(pos: Vector2) -> void:
     var crate: Crate = CrateScene.instance()
@@ -157,7 +176,7 @@ func _on_player_movement(direction: int, player: Player) -> void:
             if target is Item:
                 var item := target as Item
                 item.pickup()
-                _player_items[player.player_index][item.item_type] = true
+                _player_items[player][item.item_type] = true
 
             elif target is ExplosionFX:
                 player.explode()
@@ -175,9 +194,17 @@ func _on_player_spawn_bomb(player: Player) -> void:
     _spawn_bomb(current_pos, _get_player_item_status(player, Item.ItemType.PowerBomb))
 
 func _get_player_item_status(player: Player, item_type: int) -> bool:
-    if item_type in _player_items[player.player_index]:
-        return _player_items[player.player_index][item_type]
+    if item_type in _player_items[player]:
+        return _player_items[player][item_type]
     return false
+
+func _get_remaining_player_indices() -> Dictionary:
+    var alive := {}
+    for item in _player_status:
+        var player := item as Player
+        alive[player.player_index] = true
+    print(alive)
+    return alive
 
 func _on_player_push_bomb(direction: int, player: Player) -> void:
     # Make sure the player can push
@@ -204,10 +231,7 @@ func _on_player_push_bomb(direction: int, player: Player) -> void:
             _tile_controller.set_node_locked(bomb, false)
 
 func _on_player_dead(player: Player) -> void:
-    _player_status.erase(player.player_index)
-    if len(_player_status) == 1:
-        _hud.show_win(_player_status.keys()[0])
-        _stop_game()
+    _player_status.erase(player)
 
 func _spawn_bomb(pos: Vector2, is_power_bomb: bool) -> void:
     var targets = _tile_controller.get_nodes_at_position(pos)
@@ -263,6 +287,15 @@ func _on_bomb_explosion(bomb: Bomb) -> void:
         _spawn_explosion(pos + Vector2(0, -1))
         _spawn_explosion(pos + Vector2(0, 1))
 
+    # Check if everyone is alive?
+    var remaining = _get_remaining_player_indices()
+    if len(remaining) == 1:
+        _hud.show_win(remaining.keys()[0])
+        _stop_game()
+    elif len(remaining) == 0:
+        _hud.show_draw()
+        _stop_game()
+
 func _add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
     match direction:
         Direction.LEFT:
@@ -283,8 +316,10 @@ func _input(event: InputEvent) -> void:
 
 func _stop_game() -> void:
     _game_running = false
-    for player_idx in _player_status:
-        var player := _player_status[player_idx] as Player
+
+    _item_timer.stop()
+    for item in _player_status:
+        var player := item as Player
         player.set_process(false)
 
 func _process(delta: float) -> void:
@@ -297,18 +332,15 @@ func _process(delta: float) -> void:
         else:
             _hud.update_hud(_remaining_time)
 
-    _update_camera()
-
-func _update_camera() -> void:
+func _prepare_camera() -> void:
     var vp_size := get_viewport_rect().size
-    var half_vp_size := vp_size / 2
-    var players_rect = _get_players_rect()
-    var players_center = players_rect.get_center()
-    var players_rect_size = players_rect.size + Vector2(64, 64) * 4
+    var map_size := _map_rect.size * _cell_size
 
-    var ratio_vec = (players_rect_size / vp_size)
-    var max_ratio_comp = max(ratio_vec.x, ratio_vec.y)
-    var clamped_ratio = max(max_ratio_comp, 1)
+    var ratio_vec := map_size / vp_size
+    var max_ratio_comp := max(ratio_vec.x, ratio_vec.y)
+    var clamped_ratio := max(max_ratio_comp, 1)
+    var map_size_ratio := map_size / clamped_ratio
     ratio_vec = Vector2(clamped_ratio, clamped_ratio)
-    _camera.position = players_center - half_vp_size
-    _camera.zoom = lerp(_camera.zoom, Vector2(ratio_vec), 0.025)
+
+    _camera.zoom = ratio_vec
+    _camera.position = (-(vp_size - map_size_ratio) / 2) * _camera.zoom

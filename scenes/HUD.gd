@@ -14,6 +14,9 @@ func update_hud(time: float) -> void:
 func show_win(player_index: int) -> void:
     _show_win_message("P%d WINS!" % player_index)
 
+func show_draw() -> void:
+    _show_win_message("DRAW!")
+
 func show_time_out() -> void:
     _show_win_message("TIME!")
 
