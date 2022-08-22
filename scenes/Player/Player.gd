@@ -40,6 +40,9 @@ var _locked := false
 var _exploded := false
 var _player_input: PlayerInput
 
+###########
+# Lifecycle
+
 func _ready() -> void:
     self_modulate = player_color
     _label.text = "P%d" % player_index
@@ -53,9 +56,6 @@ func _ready() -> void:
         _player_input.name = "PlayerInput"
         _player_input.player_index = player_index
         add_child(_player_input)
-
-func _is_player_action_pressed(key: String) -> bool:
-    return _player_input.keys[key]
 
 func _process(_delta: float) -> void:
     if _exploded:
@@ -93,18 +93,8 @@ func _process(_delta: float) -> void:
     if _is_player_action_pressed("push"):
         _push_bomb()
 
-func _move(direction: int) -> void:
-    if !_locked:
-        _direction = direction
-        _move_state = MoveState.MOVING
-        _update_animation_state()
-        emit_signal("move", _direction)
-
-func _spawn_bomb() -> void:
-    emit_signal("spawn_bomb")
-
-func _push_bomb() -> void:
-    emit_signal("push_bomb", _direction)
+################
+# Public methods
 
 func lock() -> void:
     _locked = true
@@ -121,6 +111,25 @@ func explode() -> void:
     emit_signal("exploded")
     yield(_animation_player, "animation_finished")
     queue_free()
+
+#########
+# Helpers
+
+func _is_player_action_pressed(key: String) -> bool:
+    return _player_input.keys[key]
+
+func _move(direction: int) -> void:
+    if !_locked:
+        _direction = direction
+        _move_state = MoveState.MOVING
+        _update_animation_state()
+        emit_signal("move", _direction)
+
+func _spawn_bomb() -> void:
+    emit_signal("spawn_bomb")
+
+func _push_bomb() -> void:
+    emit_signal("push_bomb", _direction)
 
 func _stay_idle() -> void:
     _move_state = MoveState.IDLE

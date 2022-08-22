@@ -10,30 +10,21 @@ var player_index := 1
 var camera: Camera2D = null
 var target_node: Node2D = null
 
+###########
+# Lifecycle
+
 func _ready() -> void:
     visible = false
     _label.text = "P%d" % player_index
 
-func fade_in() -> void:
-    _animation_player.play("fade_in")
-
-func fade_out() -> void:
-    _animation_player.play("fade_out")
-
-func rotate_towards(point: Vector2) -> void:
-    _sprite.rotation = point.angle_to_point(position)
-
-func get_size() -> Vector2:
-    return _sprite.texture.get_size() * _sprite.scale
-
 func _process(_delta: float) -> void:
     if camera == null || target_node == null || !is_instance_valid(target_node):
         if visible:
-            fade_out()
+            _fade_out()
         return
 
     var show_bubble := false
-    var bubble_offset := get_size() / 1.5
+    var bubble_offset := _get_size() / 1.5
     var target_coords := target_node.position
     var camera_coords := camera.position * camera.zoom
     var vp_size := get_viewport_rect().size * camera.zoom
@@ -56,11 +47,26 @@ func _process(_delta: float) -> void:
     else:
         position.y = target_coords.y
 
-    rotate_towards(target_coords)
+    _rotate_towards(target_coords)
 
     if show_bubble:
         if !visible:
-            fade_in()
+            _fade_in()
     else:
         if visible:
-            fade_out()
+            _fade_out()
+
+#########
+# Helpers
+
+func _fade_in() -> void:
+    _animation_player.play("fade_in")
+
+func _fade_out() -> void:
+    _animation_player.play("fade_out")
+
+func _rotate_towards(point: Vector2) -> void:
+    _sprite.rotation = point.angle_to_point(position)
+
+func _get_size() -> Vector2:
+    return _sprite.texture.get_size() * _sprite.scale

@@ -5,11 +5,17 @@ var _bg_tilemap: TileMap
 var _mg_tilemap: TileMap
 var _tileset: TileSet
 
+###########
+# Lifecycle
+
 func _init(background: TileMap, middleground: TileMap) -> void:
     _bg_tilemap = background
     _mg_tilemap = middleground
     _tileset = _mg_tilemap.tile_set
     randomize()
+
+################
+# Public methods
 
 func generate(map_size: Vector2) -> void:
     var bg_tile := _tileset.find_tile_by_name("background")

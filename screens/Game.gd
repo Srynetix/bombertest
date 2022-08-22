@@ -3,7 +3,7 @@ extends Node2D
 const Direction = Enums.Direction
 const GameMode = Enums.GameMode
 const CrateScene = preload("res://scenes/Crate.tscn")
-const PlayerScene = preload("res://scenes/Player.tscn")
+const PlayerScene = preload("res://scenes/Player/Player.tscn")
 const WallScene = preload("res://scenes/Wall.tscn")
 const BombScene = preload("res://scenes/Bomb.tscn")
 const ItemScene = preload("res://scenes/Item.tscn")
@@ -45,9 +45,13 @@ var _tile_controller: TileController
 # Lifecycle
 
 func _ready() -> void:
-    # _load_level("Map01")
-    # _load_level("Map02")
-    _load_random_level()
+    match GameData.map_name:
+        "Map01":
+            _load_level("Map01")
+        "Map02":
+            _load_level("Map02")
+        _:
+            _load_random_level()
 
     _tile_controller = TileController.new(_map_rect.size)
     _spawn_tiles()
@@ -59,8 +63,7 @@ func _ready() -> void:
 
     yield(_hud.show_ready(), "completed")
 
-    _game_running = true
-    _item_timer.start()
+    _start_game()
 
 func _process(delta: float) -> void:
     if _game_running:
@@ -144,6 +147,7 @@ func _spawn_player(pos: Vector2, player_index: int) -> void:
     player.connect("push_bomb", self, "_on_player_push_bomb", [ player ])
     player.connect("exploded", self, "_on_player_dead", [ player ])
     player.connect("tree_exiting", _tile_controller, "remove_node_position", [ player ])
+    player.lock()
 
     # Input
     if GameData.game_mode == GameMode.SOLO && player_index > 1:
@@ -366,6 +370,18 @@ func _add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
 func _stop_game() -> void:
     _game_running = false
     _item_timer.stop()
+
+    for item in _player_status:
+        var player := item as Player
+        player.lock()
+
+func _start_game() -> void:
+    for item in _player_status:
+        var player := item as Player
+        player.unlock()
+
+    _game_running = true
+    _item_timer.start()
 
 func _prepare_camera() -> void:
     var vp_size := get_viewport_rect().size

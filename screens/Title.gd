@@ -14,11 +14,11 @@ func _ready() -> void:
 
 func _start_game_solo() -> void:
     GameData.set_game_mode(Enums.GameMode.SOLO)
-    GameSceneTransitioner.fade_to_scene_path("res://screens/Game.tscn")
+    GameSceneTransitioner.fade_to_scene_path("res://screens/MapSelect.tscn")
 
 func _start_game_local() -> void:
     GameData.set_game_mode(Enums.GameMode.LOCAL)
-    GameSceneTransitioner.fade_to_scene_path("res://screens/Game.tscn")
+    GameSceneTransitioner.fade_to_scene_path("res://screens/MapSelect.tscn")
 
 func _start_game_online() -> void:
     pass

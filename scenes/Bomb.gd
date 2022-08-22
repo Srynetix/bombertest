@@ -11,10 +11,16 @@ signal explode()
 
 var _triggered := false
 
+###########
+# Lifecycle
+
 func _ready() -> void:
     _ignition_timer.connect("timeout", self, "trigger")
     _animation_player.play("charging")
     _power_particles.emitting = power_bomb
+
+################
+# Public methods
 
 func trigger() -> void:
     if _triggered:
@@ -23,6 +29,9 @@ func trigger() -> void:
     _triggered = true
     _ignition_timer.stop()
     _explode()
+
+#########
+# Helpers
 
 func _explode() -> void:
     emit_signal("explode")

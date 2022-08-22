@@ -1,3 +1,4 @@
+# Shared enums used in the project.
 extends Reference
 class_name Enums
 

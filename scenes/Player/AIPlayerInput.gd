@@ -1,4 +1,9 @@
-extends "res://scenes/PlayerInput.gd"
+# AI-controlled player input.
+# Use a simple three-parts logic:
+#   - Chase the first player (with AStar)
+#   - Avoid bombs
+#   - Spawn bombs if possible
+extends "res://scenes/Player/PlayerInput.gd"
 class_name AIPlayerInput
 
 const Direction = Enums.Direction
@@ -9,23 +14,15 @@ var _previous_direction = null
 var _other_players: Dictionary = {}
 var _bomb_positions: Dictionary = {}
 
+###########
+# Lifecycle
+
 func _init(tile_controller: TileController) -> void:
     _tile_controller = tile_controller
 
 func _ready() -> void:
     _player = get_parent() as Player
     _update_other_players_position()
-
-func _update_other_players_position():
-    _other_players.clear()
-    _bomb_positions.clear()
-
-    var nodes := _tile_controller.get_known_nodes()
-    for node in nodes:
-        if node is Player && node != _player:
-            _other_players[node] = nodes[node]
-        elif node is Bomb || node is ExplosionFX:
-            _bomb_positions[node] = nodes[node]
 
 func _process(_delta: float) -> void:
     _reset()
@@ -44,10 +41,24 @@ func _process(_delta: float) -> void:
     else:
         keys[_direction_to_movement(next_dir)] = true
 
+#########
+# Helpers
+
+func _update_other_players_position():
+    _other_players.clear()
+    _bomb_positions.clear()
+
+    var nodes := _tile_controller.get_known_nodes()
+    for node in nodes:
+        if node is Player && node != _player:
+            _other_players[node] = nodes[node]
+        elif node is Bomb || node is ExplosionFX:
+            _bomb_positions[node] = nodes[node]
+
 func _target_player() -> int:
     var first_player = _other_players.keys()[0]
     var cur_pos := _tile_controller.get_node_position(_player)
-    var astar := _tile_controller.compute_astar()
+    var astar := GameAStar.new(_tile_controller)
     var next_dir := astar.get_next_direction_to_coords(cur_pos, _other_players[first_player])
     return next_dir
 
@@ -57,7 +68,7 @@ func _avoid_bombs(next_dir: int) -> int:
     if !_is_near_bombs(next_pos):
         return next_dir
 
-    for d in [Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN]:
+    for d in Utils.ALL_DIRECTIONS:
         if d != next_dir:
             var next_pos_l = Utils.add_direction_to_pos(cur_pos, d)
             var targets = _tile_controller.get_nodes_at_position(next_pos_l)
@@ -84,7 +95,7 @@ func _is_near_bombs(pos: Vector2) -> bool:
         var coord := _bomb_positions[bomb] as Vector2
         if pos == coord:
             return true
-        for x in [Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN]:
+        for x in Utils.ALL_DIRECTIONS:
             if Utils.add_direction_to_pos(coord, x) == pos:
                 return true
     return false

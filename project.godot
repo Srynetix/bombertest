@@ -12,7 +12,7 @@ _global_script_classes=[ {
 "base": "Node",
 "class": "AIPlayerInput",
 "language": "GDScript",
-"path": "res://scenes/AIPlayerInput.gd"
+"path": "res://scenes/Player/AIPlayerInput.gd"
 }, {
 "base": "Sprite",
 "class": "Bomb",
@@ -39,6 +39,11 @@ _global_script_classes=[ {
 "language": "GDScript",
 "path": "res://scenes/ExplosionFX.gd"
 }, {
+"base": "AStar2D",
+"class": "GameAStar",
+"language": "GDScript",
+"path": "res://scenes/Map/GameAStar.gd"
+}, {
 "base": "CanvasLayer",
 "class": "HUD",
 "language": "GDScript",
@@ -52,22 +57,22 @@ _global_script_classes=[ {
 "base": "Node",
 "class": "LocalPlayerInput",
 "language": "GDScript",
-"path": "res://scenes/LocalPlayerInput.gd"
+"path": "res://scenes/Player/LocalPlayerInput.gd"
 }, {
 "base": "Object",
 "class": "MapRandomizer",
 "language": "GDScript",
-"path": "res://scenes/MapRandomizer.gd"
+"path": "res://scenes/Map/MapRandomizer.gd"
 }, {
 "base": "Sprite",
 "class": "Player",
 "language": "GDScript",
-"path": "res://scenes/Player.gd"
+"path": "res://scenes/Player/Player.gd"
 }, {
 "base": "Node",
 "class": "PlayerInput",
 "language": "GDScript",
-"path": "res://scenes/PlayerInput.gd"
+"path": "res://scenes/Player/PlayerInput.gd"
 }, {
 "base": "Reference",
 "class": "SxArray",
@@ -277,7 +282,7 @@ _global_script_classes=[ {
 "base": "Object",
 "class": "TileController",
 "language": "GDScript",
-"path": "res://scenes/TileController.gd"
+"path": "res://scenes/Map/TileController.gd"
 }, {
 "base": "Object",
 "class": "Utils",
@@ -296,6 +301,7 @@ _global_script_class_icons={
 "Crate": "",
 "Enums": "",
 "ExplosionFX": "",
+"GameAStar": "",
 "HUD": "",
 "Item": "",
 "LocalPlayerInput": "",
@@ -351,6 +357,7 @@ _global_script_class_icons={
 [application]
 
 config/name="Bombertest"
+run/main_scene="res://screens/Title.tscn"
 config/icon="res://icon.png"
 
 [autoload]

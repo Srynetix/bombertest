@@ -2,6 +2,7 @@ extends Object
 class_name Utils
 
 const Direction = Enums.Direction
+const ALL_DIRECTIONS := [Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN]
 
 static func add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
     match direction:
@@ -16,4 +17,4 @@ static func add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
     return Vector2()
 
 static func rand_direction() -> int:
-    return SxRand.choice_array([Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN])
+    return SxRand.choice_array(ALL_DIRECTIONS)

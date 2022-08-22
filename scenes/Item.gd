@@ -16,12 +16,18 @@ onready var _anim_player := $AnimationPlayer as AnimationPlayer
 
 var _picked := false
 
+###########
+# Lifecycle
+
 func _ready() -> void:
     match item_type:
         ItemType.PowerBomb:
             _sprite.texture = PowerBombTexture
         ItemType.Push:
             _sprite.texture = PushTexture
+
+################
+# Public methods
 
 static func random_item_type() -> int:
     return SxRand.range_i(0, ItemType.Push + 1)
