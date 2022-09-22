@@ -145,9 +145,9 @@ _global_script_classes=[ {
 "path": "res://addons/sxgd/nodes/debug/SxDebugInfo/SxDebugInfo.gd"
 }, {
 "base": "CanvasLayer",
-"class": "SxDebugPanel",
+"class": "SxDebugTools",
 "language": "GDScript",
-"path": "res://addons/sxgd/nodes/debug/SxDebugPanel/SxDebugPanel.gd"
+"path": "res://addons/sxgd/nodes/debug/SxDebugTools/SxDebugTools.gd"
 }, {
 "base": "Node",
 "class": "SxDoubleTap",
@@ -417,7 +417,7 @@ _global_script_class_icons={
 "SxColor": "",
 "SxContainer": "",
 "SxDebugInfo": "",
-"SxDebugPanel": "",
+"SxDebugTools": "",
 "SxDoubleTap": "",
 "SxFAButton": "",
 "SxFAFont": "",
