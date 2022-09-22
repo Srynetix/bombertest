@@ -10,9 +10,44 @@ const ItemScene = preload("res://scenes/Item.tscn")
 const BubbleScene = preload("res://scenes/Bubble.tscn")
 const ExplosionFXScene = preload("res://scenes/ExplosionFX.tscn")
 
-export var item_spawn_frequency := 15.0
-export var max_players := 2
+class PlayerData:
+    const DEFAULT_BOMB_LIMIT := 3
+
+    var player: Player
+    var player_index: int
+    var player_name := ""
+    var bomb_limit := DEFAULT_BOMB_LIMIT
+    var current_active_bombs := 0
+    var active_items := {}
+
+    func _init(player_: Player) -> void:
+        player = player_
+        player_index = player_.player_index
+        player_name = "P%d" % player_.player_index
+
+    func incr_active_bombs() -> void:
+        current_active_bombs += 1
+
+    func decr_active_bombs() -> void:
+        current_active_bombs -= 1
+
+    func can_place_bomb() -> bool:
+        return current_active_bombs < bomb_limit
+
+    func set_item_active(item_type: int) -> void:
+        match item_type:
+            Item.ItemType.Bomb:
+                bomb_limit += 2
+            _:
+                active_items[item_type] = true
+
+    func set_item_inactive(item_type: int) -> void:
+        active_items.erase(item_type)
+
+export var item_spawn_frequency := 2.0
 export var game_time_limit := 120
+
+signal game_over()
 
 const TWEEN_SPEED := 0.25
 
@@ -29,22 +64,32 @@ onready var _hud := $HUD as HUD
 onready var _item_timer := $ItemTimer as Timer
 
 var _bg_tilemap: TileMap
-var _md_tilemap: TileMap
+var _mg_tilemap: TileMap
 var _fg_tilemap: TileMap
 var _cell_size: Vector2
 var _map_rect: Rect2
+var _max_players: int
+var _human_players: int
 
-var _player_status := {}
-var _player_items := {}
+var _player_data := {}
 var _logger := SxLog.get_logger("Game")
 var _remaining_time := float(game_time_limit)
-var _game_running := true
+var _game_running := false
+var _game_ended := false
 var _tile_controller: TileController
+
+var _last_free_id := 0
 
 ###########
 # Lifecycle
 
 func _ready() -> void:
+    _max_players = GameData.game_max_players
+    _human_players = GameData.game_human_players
+
+    _setup_game()
+
+func _setup_game() -> void:
     match GameData.map_name:
         "Map01":
             _load_level("Map01")
@@ -59,7 +104,6 @@ func _ready() -> void:
 
     _item_timer.wait_time = item_spawn_frequency
     _item_timer.connect("timeout", self, "_spawn_item_at_empty_position")
-    _game_running = false
 
     yield(_hud.show_ready(), "completed")
 
@@ -75,12 +119,6 @@ func _process(delta: float) -> void:
         else:
             _hud.update_hud(_remaining_time)
 
-func _input(event: InputEvent) -> void:
-    if event is InputEventKey:
-        var event_key = event as InputEventKey
-        if event_key.physical_scancode == KEY_ENTER:
-            get_tree().reload_current_scene()
-
 ###############
 # Level loading
 
@@ -90,10 +128,10 @@ func _load_level(name: String) -> void:
     self.add_child_below_node(_camera, level)
 
     _bg_tilemap = level.get_node("Background") as TileMap
-    _md_tilemap = level.get_node("Middleground") as TileMap
+    _mg_tilemap = level.get_node("Middleground") as TileMap
     _fg_tilemap = level.get_node("Foreground") as TileMap
-    _cell_size = _md_tilemap.cell_size
-    _map_rect = _md_tilemap.get_used_rect()
+    _cell_size = _mg_tilemap.cell_size
+    _map_rect = _mg_tilemap.get_used_rect()
 
 func _load_random_level() -> void:
     var LevelScene := load("res://levels/MapData.tscn")
@@ -101,29 +139,30 @@ func _load_random_level() -> void:
     self.add_child_below_node(_camera, level)
 
     _bg_tilemap = level.get_node("Background") as TileMap
-    _md_tilemap = level.get_node("Middleground") as TileMap
+    _mg_tilemap = level.get_node("Middleground") as TileMap
     _fg_tilemap = level.get_node("Foreground") as TileMap
 
-    var randomizer := MapRandomizer.new(_bg_tilemap, _md_tilemap)
-    randomizer.generate(Vector2(30, 20))
+    var randomizer := MapRandomizer.new(_bg_tilemap, _mg_tilemap)
+    randomizer.generate(_max_players, Vector2(30, 20))
 
-    _cell_size = _md_tilemap.cell_size
-    _map_rect = _md_tilemap.get_used_rect()
+    _cell_size = _mg_tilemap.cell_size
+    _map_rect = _mg_tilemap.get_used_rect()
 
 ###############
 # Spawn methods
 
 func _spawn_tiles() -> void:
-    var last_player_id := 1
-    var tilemap := _md_tilemap
+    var player_index := 1
+
+    var tilemap := _mg_tilemap
     for pos in tilemap.get_used_cells():
         var tile_idx := tilemap.get_cellv(pos)
         var tile_name := tilemap.tile_set.tile_get_name(tile_idx)
 
         if tile_name == "player":
-            _spawn_player(pos, last_player_id)
+            _spawn_player(pos, player_index)
             tilemap.set_cellv(pos, -1)
-            last_player_id = wrapi(last_player_id + 1, 1, max_players + 1)
+            player_index = wrapi(player_index + 1, 1, _max_players + 1)
 
         elif tile_name == "crate":
             _spawn_crate(pos)
@@ -133,46 +172,85 @@ func _spawn_tiles() -> void:
             _spawn_wall(pos)
             tilemap.set_cellv(pos, -1)
 
-        elif tile_name == "bomb":
-            _spawn_bomb(pos, false)
-            tilemap.set_cellv(pos, -1)
+    _setup_player_hud()
+
+func _setup_player_hud():
+    var scores := {}
+    for idx in _player_data:
+        scores[idx] = GameData.last_scores.get(idx, 0)
+    GameData.update_scores(scores)
+    _hud.setup_player_hud(scores)
+    _on_player_hud_setup(scores)
+
+func _on_player_hud_setup(_scores: Dictionary) -> void:
+    pass
 
 func _spawn_player(pos: Vector2, player_index: int) -> void:
     var player: Player = PlayerScene.instance()
     player.position = _get_snapped_pos(pos)
     player.player_index = player_index
     player.player_color = SxRand.choice_array(PLAYER_COLOR_ROULETTE)
+    player.name = "Player%d" % _get_free_item_id()
+
+    if player_index == 1:
+        player.player_name = GameData.player_username
+    else:
+        player.player_name = "P%d" % player_index
+
     player.connect("move", self, "_on_player_movement", [ player ])
     player.connect("spawn_bomb", self, "_on_player_spawn_bomb", [ player ])
     player.connect("push_bomb", self, "_on_player_push_bomb", [ player ])
     player.connect("exploded", self, "_on_player_dead", [ player ])
-    player.connect("tree_exiting", _tile_controller, "remove_node_position", [ player ])
+    player.connect("tree_exiting", self, "_on_tile_removed", [ player ])
     player.lock()
 
     # Input
-    if GameData.game_mode == GameMode.SOLO && player_index > 1:
-        var player_input = AIPlayerInput.new(_tile_controller)
-        player_input.name = "PlayerInput"
-        player.add_child(player_input)
+    _setup_player_input(player, player_index)
 
     _tiles.get_node("Player").add_child(player)
     _tile_controller.set_node_position(player, pos)
 
-    _player_status[player] = true
-    _player_items[player] = {}
+    _player_data[player.player_index] = PlayerData.new(player)
+    _on_player_spawned(pos, player_index, player.name)
+
+func _setup_player_input(player: Player, player_index: int) -> void:
+    if player_index - 1 >= _human_players:
+        var player_input = AIPlayerInput.new(_tile_controller)
+        player_input.name = "PlayerInput"
+        player.add_child(player_input)
+
+func _add_player_score(player_index: int, delta: int) -> void:
+    var score := GameData.add_player_score(player_index, delta)
+    _on_player_score_update(player_index, score)
+
+func _on_player_score_update(player_index: int, score: int) -> void:
+    _hud.update_player_score(player_index, score)
+
+func _on_player_spawned(_pos: Vector2, _player_index: int, _name: String) -> void:
+    pass
 
 func _spawn_crate(pos: Vector2) -> void:
     var crate: Crate = CrateScene.instance()
     crate.position = _get_snapped_pos(pos)
-    crate.connect("tree_exiting", _tile_controller, "remove_node_position", [ crate ])
+    crate.connect("tree_exiting", self, "_on_tile_removed", [ crate ])
+    crate.name = "Crate%d" % _get_free_item_id()
     _tiles.get_node("BelowPlayer").add_child(crate)
     _tile_controller.set_node_position(crate, pos)
+    _on_crate_spawned(pos, crate.name)
+
+func _on_crate_spawned(_pos: Vector2, _name: String) -> void:
+    pass
 
 func _spawn_wall(pos: Vector2) -> void:
     var wall: Wall = WallScene.instance()
     wall.position = _get_snapped_pos(pos)
+    wall.name = "Wall%d" % _get_free_item_id()
     _tiles.get_node("BelowPlayer").add_child(wall)
     _tile_controller.set_node_position(wall, pos)
+    _on_wall_spawned(pos, wall.name)
+
+func _on_wall_spawned(_pos: Vector2, _name: String) -> void:
+    pass
 
 func _spawn_item_at_empty_position() -> void:
     var pos := _tile_controller.get_random_empty_position()
@@ -184,24 +262,42 @@ func _spawn_item_at_empty_position() -> void:
     var item: Item = ItemScene.instance()
     item.item_type = item_type
     item.position = _get_snapped_pos(pos)
-    item.connect("tree_exiting", _tile_controller, "remove_node_position", [ item ])
+    item.name = "Item%d" % _get_free_item_id()
+    item.connect("tree_exiting", self, "_on_tile_removed", [ item ])
     _tiles.get_node("BelowPlayer").add_child(item)
     _tile_controller.set_node_position(item, pos)
+    _on_item_spawned(pos, item.item_type, item.name)
 
-func _spawn_bomb(pos: Vector2, is_power_bomb: bool) -> void:
+func _on_item_spawned(_pos: Vector2, _item_type: int, _name: String) -> void:
+    pass
+
+func _spawn_bomb(pos: Vector2, is_power_bomb: bool, spawner: Player = null) -> void:
     var targets = _tile_controller.get_nodes_at_position(pos)
     for target in targets:
         if target is Bomb:
             return
 
     var bomb: Bomb = BombScene.instance()
+    bomb.spawner = spawner
     bomb.power_bomb = is_power_bomb
     bomb.connect("explode", self, "_on_bomb_explosion", [bomb])
     bomb.position = _get_snapped_pos(pos)
+    bomb.name = "Bomb%d" % _get_free_item_id()
     _tiles.get_node("BelowPlayer").add_child(bomb)
     _tile_controller.set_node_position(bomb, pos)
+    _on_bomb_spawned(pos, is_power_bomb, bomb.name)
 
-func _spawn_explosion(pos: Vector2) -> bool:
+    if spawner:
+        var pdata := _player_data[spawner.player_index] as PlayerData
+        pdata.incr_active_bombs()
+
+func _on_bomb_spawned(_pos: Vector2, _is_power_bomb: bool, _name: String) -> void:
+    pass
+
+func _on_tile_removed(node: Node2D) -> void:
+    _tile_controller.remove_node_position(node)
+
+func _spawn_explosion(bomb_origin: Bomb, pos: Vector2) -> bool:
     var targets := _tile_controller.get_nodes_at_position(pos)
     for target in targets:
         if target is Bomb:
@@ -211,19 +307,42 @@ func _spawn_explosion(pos: Vector2) -> bool:
             target.queue_free()
         elif target is Player:
             var player: Player = target
+            if !player.is_alive():
+                continue
+
+            _on_player_explode(player)
             player.explode()
+
+            # Handle score
+            var spawner := bomb_origin.spawner
+            if spawner && is_instance_valid(spawner):
+                # Special case: autodestruction, -1!
+                if spawner == player:
+                    _add_player_score(spawner.player_index, -1)
+                else:
+                    _add_player_score(spawner.player_index, 1)
+
         elif target is Item:
             target.queue_free()
         elif target is Wall:
             return false
 
     var explosion: Node2D = ExplosionFXScene.instance()
-    explosion.connect("tree_exiting", _tile_controller, "remove_node_position", [explosion])
+    explosion.connect("tree_exiting", self, "_on_tile_removed", [explosion])
     explosion.connect("tree_exiting", self, "_detect_endgame")
     explosion.position = _get_snapped_pos(pos)
+    explosion.name = "Explosion%d" % _get_free_item_id()
+    explosion.spawner = bomb_origin.spawner
     _tiles.get_node("BelowPlayer").add_child(explosion)
     _tile_controller.set_node_position(explosion, pos)
+    _on_explosion_spawned(pos)
     return true
+
+func _on_explosion_spawned(_pos: Vector2) -> void:
+    pass
+
+func _exit_tree():
+    _game_ended = true
 
 #########
 # Events
@@ -239,27 +358,55 @@ func _on_player_movement(direction: int, player: Player) -> void:
         var targets := _tile_controller.get_nodes_at_position(next_pos)
         for target in targets:
             if target is Item:
+                var pdata := _player_data[player.player_index] as PlayerData
                 var item := target as Item
                 item.pickup()
-                _player_items[player][item.item_type] = true
+                pdata.set_item_active(item.item_type)
+                _hud.add_player_item(player.player_index, item.item_type)
+                _on_item_pick(player.player_index, item)
 
             elif target is ExplosionFX:
+                _on_player_explode(player)
                 player.explode()
+
+                # Handle score
+                _add_player_score(player.player_index, -1)
+                var spawner := target.spawner as Player
+                if spawner && is_instance_valid(spawner):
+                    # Special case: autodestruction, -2!
+                    if spawner == player:
+                        _add_player_score(spawner.player_index, -1)
+                    else:
+                        _add_player_score(spawner.player_index, 1)
+
                 return
 
         _tile_controller.set_node_position(player, next_pos)
+        _on_player_moved(player, next_pos)
         yield(_tween_to_snapped_pos(player, next_pos), "completed")
 
     # Player can be destroyed
     if is_instance_valid(player):
         player.unlock()
 
+func _on_item_pick(_player_index: int, _item: Item) -> void:
+    pass
+
+func _on_player_moved(_player: Player, _next_pos: Vector2) -> void:
+    pass
+
+func _on_bomb_moved(_bomb: Bomb, _next_pos: Vector2) -> void:
+    pass
+
 func _on_player_spawn_bomb(player: Player) -> void:
     if !_game_running:
         return
 
-    var current_pos := _tile_controller.get_node_position(player)
-    _spawn_bomb(current_pos, _get_player_item_status(player, Item.ItemType.PowerBomb))
+    if player.player_index in _player_data:
+        var pdata := _player_data[player.player_index] as PlayerData
+        if pdata.can_place_bomb():
+            var current_pos := _tile_controller.get_node_position(player)
+            _spawn_bomb(current_pos, _get_player_item_status(player, Item.ItemType.PowerBomb), player)
 
 func _on_player_push_bomb(direction: int, player: Player) -> void:
     if !_game_running:
@@ -285,29 +432,38 @@ func _on_player_push_bomb(direction: int, player: Player) -> void:
             var next_bomb_pos := _add_direction_to_pos(next_pos, direction)
             if _can_move_to_position(bomb, next_bomb_pos):
                 _tile_controller.set_node_position(bomb, next_bomb_pos)
+                _on_bomb_moved(bomb, next_bomb_pos)
                 yield(_tween_to_snapped_pos(bomb, next_bomb_pos), "completed")
             _tile_controller.set_node_locked(bomb, false)
 
 func _on_player_dead(player: Player) -> void:
-    _player_status.erase(player)
+    _player_data.erase(player.player_index)
+
+func _on_player_explode(_player: Player) -> void:
+    pass
 
 func _on_bomb_explosion(bomb: Bomb) -> void:
     var pos = _tile_controller.get_node_position(bomb)
     _tile_controller.remove_node_position(bomb)
-    _spawn_explosion(pos)
+    _on_tile_removed(bomb)
+    _spawn_explosion(bomb, pos)
+
+    if bomb.spawner && is_instance_valid(bomb.spawner) && _player_data.has(bomb.spawner.player_index):
+        var pdata := _player_data[bomb.spawner.player_index] as PlayerData
+        pdata.decr_active_bombs()
 
     if bomb.power_bomb:
         for dir in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, 1), Vector2(0, -1)]:
             var cursor = pos
             while true:
                 cursor = cursor + dir
-                if !_spawn_explosion(cursor):
+                if !_spawn_explosion(bomb, cursor):
                     break
     else:
-        _spawn_explosion(pos + Vector2(1, 0))
-        _spawn_explosion(pos + Vector2(-1, 0))
-        _spawn_explosion(pos + Vector2(0, -1))
-        _spawn_explosion(pos + Vector2(0, 1))
+        _spawn_explosion(bomb, pos + Vector2(1, 0))
+        _spawn_explosion(bomb, pos + Vector2(-1, 0))
+        _spawn_explosion(bomb, pos + Vector2(0, -1))
+        _spawn_explosion(bomb, pos + Vector2(0, 1))
 
 #########
 # Helpers
@@ -317,14 +473,20 @@ func _detect_endgame() -> void:
     if _game_running:
         var remaining = _get_remaining_player_indices()
         if len(remaining) == 1:
-            _hud.show_win(remaining.keys()[0])
-            _stop_game()
+            _endgame(remaining.keys()[0])
         elif len(remaining) == 0:
-            _hud.show_draw()
-            _stop_game()
+            _endgame(-1)
+
+func _endgame(winner: int):
+    if winner != -1:
+        _hud.show_win(winner)
+        _add_player_score(winner, 3)
+    else:
+        _hud.show_draw()
+    _stop_game()
 
 func _get_snapped_pos(map_pos: Vector2) -> Vector2:
-    return _md_tilemap.map_to_world(map_pos) + _cell_size / 2
+    return _mg_tilemap.map_to_world(map_pos) + _cell_size / 2
 
 func _tween_to_snapped_pos(object: Node2D, map_pos: Vector2) -> void:
     var tween := get_tree().create_tween()
@@ -344,15 +506,15 @@ func _can_move_to_position(source: Node2D, pos: Vector2) -> bool:
     return can_move
 
 func _get_player_item_status(player: Player, item_type: int) -> bool:
-    if item_type in _player_items[player]:
-        return _player_items[player][item_type]
+    var pdata := _player_data[player.player_index] as PlayerData
+    if item_type in pdata.active_items:
+        return pdata.active_items[item_type]
     return false
 
 func _get_remaining_player_indices() -> Dictionary:
     var alive := {}
-    for item in _player_status:
-        var player := item as Player
-        alive[player.player_index] = true
+    for idx in _player_data:
+        alive[idx] = true
     return alive
 
 func _add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
@@ -371,21 +533,31 @@ func _stop_game() -> void:
     _game_running = false
     _item_timer.stop()
 
-    for item in _player_status:
-        var player := item as Player
-        player.lock()
+    for idx in _player_data:
+        var pdata := _player_data[idx] as PlayerData
+        pdata.player.lock()
+
+    var nodes := _tile_controller.get_known_nodes()
+    for node in nodes:
+        if node is Bomb:
+            var bomb := node as Bomb
+            bomb.freeze()
+
+    _game_ended = true
+    emit_signal("game_over")
 
 func _start_game() -> void:
-    for item in _player_status:
-        var player := item as Player
-        player.unlock()
+    for idx in _player_data:
+        var pdata := _player_data[idx] as PlayerData
+        pdata.player.unlock()
 
     _game_running = true
     _item_timer.start()
 
 func _prepare_camera() -> void:
+    var offset := 6 * Vector2.ONE * _cell_size
     var vp_size := get_viewport_rect().size
-    var map_size := _map_rect.size * _cell_size
+    var map_size := _map_rect.size * _cell_size + offset
 
     var ratio_vec := map_size / vp_size
     var max_ratio_comp := max(ratio_vec.x, ratio_vec.y)
@@ -394,4 +566,8 @@ func _prepare_camera() -> void:
     ratio_vec = Vector2(clamped_ratio, clamped_ratio)
 
     _camera.zoom = ratio_vec
-    _camera.position = (-(vp_size - map_size_ratio) / 2) * _camera.zoom
+    _camera.position = (-(vp_size - map_size_ratio) / 2) * _camera.zoom - offset / 2
+
+func _get_free_item_id() -> int:
+    _last_free_id = wrapi(_last_free_id + 1, 0, 100_000)
+    return _last_free_id

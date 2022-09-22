@@ -9,6 +9,8 @@ onready var _power_particles := $PowerParticles as CPUParticles2D
 
 signal explode()
 
+var spawner: Node = null
+
 var _triggered := false
 
 ###########
@@ -29,6 +31,9 @@ func trigger() -> void:
     _triggered = true
     _ignition_timer.stop()
     _explode()
+
+func freeze() -> void:
+    _ignition_timer.stop()
 
 #########
 # Helpers

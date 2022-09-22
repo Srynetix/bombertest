@@ -1,6 +1,6 @@
 # Local player input, with local key bindings.
 # Use a "p<id>_<action>" nomenclature, e.g moving up for Player 2 equals: "p2_move_up"
-extends "res://scenes/Player/PlayerInput.gd"
+extends PlayerInput
 class_name LocalPlayerInput
 
 var player_index: int = 1

@@ -2,22 +2,13 @@
 
 [ext_resource path="res://assets/kenney_fontpackage/Fonts/Kenney Blocks.ttf" type="DynamicFontData" id=1]
 [ext_resource path="res://assets/kenney_fontpackage/Fonts/Kenney Pixel Square.ttf" type="DynamicFontData" id=2]
-[ext_resource path="res://screens/MapSelect.gd" type="Script" id=3]
+[ext_resource path="res://screens/Options.gd" type="Script" id=3]
 
 [sub_resource type="DynamicFont" id=1]
 size = 48
 use_mipmaps = true
 use_filter = true
 font_data = ExtResource( 1 )
-
-[sub_resource type="DynamicFont" id=2]
-size = 48
-outline_size = 4
-outline_color = Color( 0.176471, 0.176471, 0.176471, 1 )
-use_mipmaps = true
-use_filter = true
-extra_spacing_char = 10
-font_data = ExtResource( 2 )
 
 [sub_resource type="DynamicFont" id=3]
 size = 28
@@ -27,7 +18,15 @@ use_mipmaps = true
 use_filter = true
 font_data = ExtResource( 2 )
 
-[node name="MapSelect" type="Control"]
+[sub_resource type="DynamicFont" id=2]
+size = 28
+outline_size = 4
+outline_color = Color( 0.176471, 0.176471, 0.176471, 1 )
+use_mipmaps = true
+use_filter = true
+font_data = ExtResource( 2 )
+
+[node name="Options" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource( 3 )
@@ -57,7 +56,7 @@ margin_right = 1240.0
 margin_bottom = 72.0
 size_flags_vertical = 0
 custom_fonts/font = SubResource( 1 )
-text = "Map Selection"
+text = "Options"
 align = 1
 valign = 1
 
@@ -68,40 +67,30 @@ margin_bottom = 472.0
 size_flags_vertical = 3
 custom_constants/separation = 0
 
-[node name="Map1" type="Button" parent="MarginContainer/VBoxContainer/VBoxContainer"]
+[node name="Username" type="HBoxContainer" parent="MarginContainer/VBoxContainer/VBoxContainer"]
 margin_right = 1240.0
-margin_bottom = 106.0
-size_flags_horizontal = 3
-size_flags_vertical = 3
-custom_fonts/font = SubResource( 2 )
-text = "Map 1"
-flat = true
+margin_bottom = 52.0
+custom_constants/separation = 80
 
-[node name="Map2" type="Button" parent="MarginContainer/VBoxContainer/VBoxContainer"]
-margin_top = 106.0
-margin_right = 1240.0
-margin_bottom = 213.0
-size_flags_horizontal = 3
-size_flags_vertical = 3
-custom_fonts/font = SubResource( 2 )
-text = "Map 2"
-flat = true
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/VBoxContainer/Username"]
+margin_top = 5.0
+margin_right = 175.0
+margin_bottom = 47.0
+custom_fonts/font = SubResource( 3 )
+text = "Username"
 
-[node name="Random" type="Button" parent="MarginContainer/VBoxContainer/VBoxContainer"]
-margin_top = 213.0
+[node name="LineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/VBoxContainer/Username"]
+margin_left = 255.0
 margin_right = 1240.0
-margin_bottom = 320.0
+margin_bottom = 52.0
 size_flags_horizontal = 3
-size_flags_vertical = 3
-custom_fonts/font = SubResource( 2 )
-text = "Random"
-flat = true
+custom_fonts/font = SubResource( 3 )
 
 [node name="Back" type="Button" parent="MarginContainer/VBoxContainer"]
 margin_top = 552.0
 margin_right = 1240.0
 margin_bottom = 600.0
 size_flags_horizontal = 3
-custom_fonts/font = SubResource( 3 )
+custom_fonts/font = SubResource( 2 )
 text = "< Go Back"
 flat = true

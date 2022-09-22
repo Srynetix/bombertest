@@ -17,12 +17,13 @@ func _init(background: TileMap, middleground: TileMap) -> void:
 ################
 # Public methods
 
-func generate(map_size: Vector2) -> void:
+func generate(player_count: int, map_size: Vector2) -> void:
     var bg_tile := _tileset.find_tile_by_name("background")
     var wall_tile := _tileset.find_tile_by_name("wall")
     var crate_tile := _tileset.find_tile_by_name("crate")
     var player_tile := _tileset.find_tile_by_name("player")
     assert(map_size.x > 10 && map_size.y > 10, "map size should be greater than 10x10")
+    assert(player_count > 1, "at least two players are needed")
 
     # Draw background
     for x in range(map_size.x):
@@ -41,9 +42,18 @@ func generate(map_size: Vector2) -> void:
     _mg_tilemap.set_cell(1, 1, player_tile)
     _mg_tilemap.set_cell(int(map_size.x) - 2, int(map_size.y) - 2, player_tile)
 
+    if player_count > 2:
+        _mg_tilemap.set_cell(int(map_size.x) - 2, 1, player_tile)
+    if player_count > 3:
+        _mg_tilemap.set_cell(1, int(map_size.y) - 2, player_tile)
+
     var blocked_positions = {
         Vector2(2, 1): true,
         Vector2(1, 2): true,
+        Vector2(2, map_size.y - 2): true,
+        Vector2(1, map_size.y - 3): true,
+        Vector2(map_size.x - 3, 1): true,
+        Vector2(map_size.x - 2, 2): true,
         Vector2(map_size.x - 3, map_size.y - 2): true,
         Vector2(map_size.x - 2, map_size.y - 3): true,
     }

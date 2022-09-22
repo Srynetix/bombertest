@@ -6,6 +6,8 @@
 
 [node name="Game" type="Node2D"]
 script = ExtResource( 3 )
+item_spawn_frequency = null
+game_time_limit = null
 
 [node name="Background2" type="CanvasLayer" parent="."]
 layer = -1

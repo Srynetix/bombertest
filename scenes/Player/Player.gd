@@ -30,6 +30,7 @@ const ANIMATION_MAP := {
 
 export var player_index := 1
 export var player_color := Color.white
+export var player_name := "Unknown"
 
 onready var _animation_player := $AnimationPlayer as AnimationPlayer
 onready var _label := $Label as Label
@@ -45,7 +46,7 @@ var _player_input: PlayerInput
 
 func _ready() -> void:
     self_modulate = player_color
-    _label.text = "P%d" % player_index
+    _label.text = player_name
     _update_animation_state()
 
     # Get input
@@ -102,6 +103,9 @@ func lock() -> void:
 func unlock() -> void:
     _locked = false
 
+func is_alive() -> bool:
+    return !_exploded
+
 func explode() -> void:
     if _exploded:
         return
@@ -136,4 +140,6 @@ func _stay_idle() -> void:
     _update_animation_state()
 
 func _update_animation_state() -> void:
-    _animation_player.play(ANIMATION_MAP[_move_state][_direction])
+    var anim_name := ANIMATION_MAP[_move_state][_direction] as String
+    if _animation_player.current_animation != anim_name:
+        _animation_player.play(anim_name)

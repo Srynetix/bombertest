@@ -3,8 +3,10 @@ class_name Item
 
 const PowerBombTexture := preload("res://assets/local/item_power.png")
 const PushTexture := preload("res://assets/local/item_push.png")
+const BombTexture := preload("res://assets/local/item_bomb.png")
 
 enum ItemType {
+    Bomb,
     PowerBomb,
     Push
 }
@@ -20,14 +22,19 @@ var _picked := false
 # Lifecycle
 
 func _ready() -> void:
-    match item_type:
-        ItemType.PowerBomb:
-            _sprite.texture = PowerBombTexture
-        ItemType.Push:
-            _sprite.texture = PushTexture
+    _sprite.texture = get_item_texture(item_type)
 
 ################
 # Public methods
+
+static func get_item_texture(itype: int) -> Texture:
+    match itype:
+        ItemType.Bomb:
+            return BombTexture
+        ItemType.PowerBomb:
+            return PowerBombTexture
+        _:
+            return PushTexture
 
 static func random_item_type() -> int:
     return SxRand.range_i(0, ItemType.Push + 1)

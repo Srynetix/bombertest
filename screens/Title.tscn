@@ -136,6 +136,14 @@ custom_fonts/font = SubResource( 2 )
 text = "Online Multiplayer"
 flat = true
 
+[node name="Options" type="Button" parent="MarginContainer/VBoxContainer/VBoxContainer"]
+margin_top = 204.0
+margin_right = 1240.0
+margin_bottom = 268.0
+custom_fonts/font = SubResource( 2 )
+text = "Options"
+flat = true
+
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 autoplay = "init"
 anims/RESET = SubResource( 3 )

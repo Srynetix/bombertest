@@ -13,6 +13,7 @@ var _player: Player
 var _previous_direction = null
 var _other_players: Dictionary = {}
 var _bomb_positions: Dictionary = {}
+var _focused_player: Player = null
 
 ###########
 # Lifecycle
@@ -31,10 +32,18 @@ func _process(_delta: float) -> void:
     if len(_other_players) == 0:
         return
 
-    var next_dir = _target_player()
-    next_dir = _avoid_bombs(next_dir)
-    _try_to_bomb(next_dir)
+    if !is_instance_valid(_focused_player):
+        _focused_player = _focus_random_player()
 
+    var freeze = _should_freeze()
+    var next_dir = -1
+
+    if !freeze:
+        next_dir = _target_player(_focused_player)
+        if _try_to_bomb(next_dir):
+            keys["bomb"] = true
+
+    next_dir = _avoid_bombs(next_dir)
     if next_dir == -1:
         # Do not move
         pass
@@ -55,11 +64,16 @@ func _update_other_players_position():
         elif node is Bomb || node is ExplosionFX:
             _bomb_positions[node] = nodes[node]
 
-func _target_player() -> int:
-    var first_player = _other_players.keys()[0]
+func _focus_random_player() -> Player:
+    return SxRand.choice_array(_other_players.keys())
+
+func _should_freeze() -> bool:
+    return SxRand.chance_bool(75)
+
+func _target_player(target: Player) -> int:
     var cur_pos := _tile_controller.get_node_position(_player)
     var astar := GameAStar.new(_tile_controller)
-    var next_dir := astar.get_next_direction_to_coords(cur_pos, _other_players[first_player])
+    var next_dir := astar.get_next_direction_to_coords(cur_pos, _other_players[target])
     return next_dir
 
 func _avoid_bombs(next_dir: int) -> int:
@@ -100,7 +114,7 @@ func _is_near_bombs(pos: Vector2) -> bool:
                 return true
     return false
 
-func _try_to_bomb(next_dir: int) -> void:
+func _try_to_bomb(next_dir: int) -> bool:
     var cur_pos := _tile_controller.get_node_position(_player)
     var next_pos = Utils.add_direction_to_pos(cur_pos, next_dir)
     var targets = _tile_controller.get_nodes_at_position(next_pos)
@@ -109,8 +123,7 @@ func _try_to_bomb(next_dir: int) -> void:
         if target is Crate || target is Player:
             will_bomb = true
 
-    if will_bomb:
-        keys["bomb"] = true
+    return will_bomb
 
 func _direction_to_movement(direction: int) -> String:
     match direction:
