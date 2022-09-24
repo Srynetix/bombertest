@@ -341,9 +341,6 @@ func _spawn_explosion(bomb_origin: Bomb, pos: Vector2) -> bool:
 func _on_explosion_spawned(_pos: Vector2) -> void:
     pass
 
-func _exit_tree():
-    _game_ended = true
-
 #########
 # Events
 

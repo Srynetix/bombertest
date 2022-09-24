@@ -122,7 +122,7 @@ func _on_tile_removed(node: Node2D) -> void:
     ._on_tile_removed(node)
 
     # Do not spam clients with tile removal after game over (like on scene disposal)
-    if !_game_ended:
+    if !_game_ended && !_get_server_peer().is_quitting():
         rpc("_on_client_tile_removed", _tiles.get_path_to(node))
 
 func _on_player_explode(player: Player) -> void:

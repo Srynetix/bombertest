@@ -119,6 +119,7 @@ func _join_server() -> void:
     _client_peer.server_port = port
     _client_peer.connect("connected_to_server", self, "_on_client_connected", [ false ])
     _client_peer.connect("connection_failed", self, "_on_connection_failed", [ false ])
+    _client_peer.connect("server_disconnected", self, "_on_server_disconnected")
     _client_peer.connect("players_updated", self, "_client_update_players_display")
     add_child(_client_peer)
 
@@ -237,3 +238,16 @@ func _restart_game() -> void:
     _server_peer.remove_synchronized_node(_game)
     yield(get_tree().create_timer(1), "timeout")
     _server_start_game()
+
+func _on_server_disconnected():
+    var canvas_layer := CanvasLayer.new()
+    canvas_layer.layer = 10
+    add_child(canvas_layer)
+
+    var dialog := SxFullScreenAcceptDialog.instance() as SxFullScreenAcceptDialog
+    dialog.show_title = false
+    dialog.message = "Server disconnected.\nYou will be redirected to the title screen."
+    dialog.ok_message = "Okay. :("
+    canvas_layer.add_child(dialog)
+    dialog.connect("confirmed", self, "_go_back_title")
+    dialog.show()
