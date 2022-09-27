@@ -182,6 +182,13 @@ func _setup_player_hud():
     _hud.setup_player_hud(scores)
     _on_player_hud_setup(scores)
 
+func _play_fx(name: String) -> void:
+    var audio_fx := GameLoadCache.instantiate_scene("TempAudioFX") as TempAudioFX
+    audio_fx.min_pitch_offset = 0.5
+    audio_fx.max_pitch_offset = 1.5
+    audio_fx.stream = GameLoadCache.load_resource(name)
+    add_child(audio_fx)
+
 func _on_player_hud_setup(_scores: Dictionary) -> void:
     pass
 
@@ -387,13 +394,13 @@ func _on_player_movement(direction: int, player: Player) -> void:
         player.unlock()
 
 func _on_item_pick(_player_index: int, _item: Item) -> void:
-    pass
+    _play_fx("FXPowerup")
 
 func _on_player_moved(_player: Player, _next_pos: Vector2) -> void:
     pass
 
 func _on_bomb_moved(_bomb: Bomb, _next_pos: Vector2) -> void:
-    pass
+    _play_fx("FXPush")
 
 func _on_player_spawn_bomb(player: Player) -> void:
     if !_game_running:
@@ -404,6 +411,8 @@ func _on_player_spawn_bomb(player: Player) -> void:
         if pdata.can_place_bomb():
             var current_pos := _tile_controller.get_node_position(player)
             _spawn_bomb(current_pos, _get_player_item_status(player, Item.ItemType.PowerBomb), player)
+
+        _play_fx("FXClick")
 
 func _on_player_push_bomb(direction: int, player: Player) -> void:
     if !_game_running:
@@ -437,7 +446,7 @@ func _on_player_dead(player: Player) -> void:
     _player_data.erase(player.player_index)
 
 func _on_player_explode(_player: Player) -> void:
-    pass
+    _play_fx("FXDied")
 
 func _on_bomb_explosion(bomb: Bomb) -> void:
     var pos = _tile_controller.get_node_position(bomb)
@@ -461,6 +470,8 @@ func _on_bomb_explosion(bomb: Bomb) -> void:
         _spawn_explosion(bomb, pos + Vector2(-1, 0))
         _spawn_explosion(bomb, pos + Vector2(0, -1))
         _spawn_explosion(bomb, pos + Vector2(0, 1))
+
+    _play_fx("FXBoom")
 
 #########
 # Helpers

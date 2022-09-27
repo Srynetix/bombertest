@@ -379,6 +379,11 @@ _global_script_classes=[ {
 "language": "GDScript",
 "path": "res://addons/sxgd/modules/SxVirtualControls/SxVirtualJoystick.gd"
 }, {
+"base": "AudioStreamPlayer",
+"class": "TempAudioFX",
+"language": "GDScript",
+"path": "res://scenes/TempAudioFX.gd"
+}, {
 "base": "Object",
 "class": "TileController",
 "language": "GDScript",
@@ -469,6 +474,7 @@ _global_script_class_icons={
 "SxVirtualButton": "",
 "SxVirtualControls": "",
 "SxVirtualJoystick": "",
+"TempAudioFX": "",
 "TileController": "",
 "Utils": "",
 "Wall": ""
@@ -487,6 +493,7 @@ GameSceneTransitioner="*res://autoloads/GameSceneTransitioner.tscn"
 GameData="*res://autoloads/GameData.gd"
 GameCommandLine="*res://autoloads/GameCommandLine.gd"
 MainRPCService="*res://autoloads/MainRPCService.gd"
+GameLoadCache="*res://autoloads/GameLoadCache.gd"
 
 [debug]
 
