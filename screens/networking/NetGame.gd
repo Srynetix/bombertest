@@ -62,6 +62,15 @@ puppet func _client_start_game() -> void:
 puppet func _client_game_setup() -> void:
     _create_barrier("BContinue")
 
+func _get_player_name(player_index: int, is_cpu: bool) -> String:
+    if is_cpu:
+        return ._get_player_name(player_index, is_cpu)
+    else:
+        var players := _get_server_peer().get_players()
+        var player_ids := players.keys()
+        var owner := player_ids[player_index - 1] as int
+        return players[owner]
+
 func _continue_setup() -> void:
     _tile_controller = TileController.new(_map_rect.size)
     _spawn_tiles()
@@ -80,13 +89,12 @@ func _continue_setup() -> void:
     yield(_hud.show_ready(), "completed")
     _start_game()
 
-func _setup_player_input(player: Player, player_index: int) -> void:
-    var players := _get_server_peer().get_players()
-    var player_ids := players.keys()
-
-    if player_index - 1 >= _human_players:
-        ._setup_player_input(player, player_index)
+func _setup_player_input(player: Player, player_index: int, is_cpu: bool) -> void:
+    if is_cpu:
+        ._setup_player_input(player, player_index, is_cpu)
     else:
+        var players := _get_server_peer().get_players()
+        var player_ids := players.keys()
         var owner := player_ids[player_index - 1] as int
         var player_input := NetPlayerInput.new()
         player_input.player_index = player_index
@@ -117,7 +125,7 @@ puppet func _on_client_message(message_type: int, payload: Dictionary) -> void:
             player.position = _get_snapped_pos(payload["pos"])
             player.player_index = payload["player_index"]
             player.player_color = SxRand.choice_array(PLAYER_COLOR_ROULETTE)
-            player.player_name = payload["name"]
+            player.player_name = payload["player_name"]
             player.name = payload["name"]
             player.lock()
 
@@ -173,7 +181,7 @@ puppet func _on_client_message(message_type: int, payload: Dictionary) -> void:
             player._update_animation_state()
 
         GameMessage.BombMoved:
-            var bomb := _tiles.get_node("BelowPlayer/%s" % payload["bomb_name"]) as Bomb
+            var bomb := _tiles.get_node(payload["path"]) as Bomb
             yield(_tween_to_snapped_pos(bomb, payload["next_pos"]), "completed")
 
         GameMessage.PlayerExploded:

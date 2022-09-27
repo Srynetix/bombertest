@@ -20,3 +20,6 @@ func _handle_args(args: Args) -> void:
 
     if args.options.has("map-name"):
         GameData.set_map_name(args.options["map-name"])
+
+    if args.options.has("username"):
+        GameData.player_username = args.options["username"]

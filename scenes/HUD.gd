@@ -21,13 +21,13 @@ func _ready() -> void:
 ################
 # Public methods
 
-func setup_player_hud(initial_score: Dictionary) -> void:
+func setup_player_hud(initial_score: Dictionary, names: Dictionary) -> void:
     var count := 0
     for idx in initial_score:
         var instance := PlayerHUDScene.instance() as PlayerHUD
         instance.size_flags_horizontal = Control.SIZE_EXPAND_FILL
         instance.size_flags_vertical = Control.SIZE_EXPAND_FILL
-        instance.player_name = "P%d" % idx
+        instance.player_name = names[idx]
 
         if count >= 2:
             instance.inverted = true
@@ -54,8 +54,8 @@ func show_ready() -> void:
     yield(_show_win_message("Go!"), "completed")
     _win.text = ""
 
-func show_win(player_index: int) -> void:
-    _show_win_message("P%d WINS!" % player_index)
+func show_win(player_name: String) -> void:
+    _show_win_message("%s WINS!" % player_name)
 
 func show_draw() -> void:
     _show_win_message("DRAW!")

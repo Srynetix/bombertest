@@ -221,6 +221,7 @@ tracks/0/keys = {
 }
 
 [sub_resource type="DynamicFont" id=11]
+size = 32
 use_mipmaps = true
 use_filter = true
 font_data = ExtResource( 3 )
@@ -246,10 +247,11 @@ anims/moving_up = SubResource( 8 )
 [node name="Label" type="Label" parent="."]
 anchor_left = 0.5
 anchor_right = 0.5
-margin_left = -52.0
-margin_top = -50.0
-margin_right = -12.0
-margin_bottom = -50.0
+margin_left = -158.0
+margin_top = -73.0
+margin_right = 98.0
+margin_bottom = -25.0
+rect_min_size = Vector2( 256, 0 )
 custom_fonts/font = SubResource( 11 )
 text = "P1"
 align = 1

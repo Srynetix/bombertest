@@ -41,7 +41,7 @@ class PlayerData:
     func _init(player_: Player) -> void:
         player = player_
         player_index = player_.player_index
-        player_name = "P%d" % player_.player_index
+        player_name = player_.player_name
 
     func incr_active_bombs() -> void:
         current_active_bombs += 1
@@ -194,12 +194,14 @@ func _spawn_tiles() -> void:
 
 func _setup_player_hud():
     var scores := {}
+    var names := {}
     for idx in _player_data:
         scores[idx] = GameData.last_scores.get(idx, 0)
+        names[idx] = _player_data[idx].player_name
     GameData.update_scores(scores)
     _send_client_message(
         GameMessage.PlayerHudSetup,
-        {"scores": scores}
+        {"scores": scores, "names": names}
     )
 
 func _play_fx(name: String) -> void:
@@ -216,11 +218,6 @@ func _spawn_player(pos: Vector2, player_index: int) -> void:
     player.player_color = SxRand.choice_array(PLAYER_COLOR_ROULETTE)
     player.name = "Player%d" % _get_free_item_id()
 
-    if player_index == 1:
-        player.player_name = GameData.player_username
-    else:
-        player.player_name = "P%d" % player_index
-
     player.connect("move", self, "_on_player_movement", [ player ])
     player.connect("spawn_bomb", self, "_on_player_spawn_bomb", [ player ])
     player.connect("push_bomb", self, "_on_player_push_bomb", [ player ])
@@ -229,22 +226,38 @@ func _spawn_player(pos: Vector2, player_index: int) -> void:
     player.lock()
 
     # Input
-    _setup_player_input(player, player_index)
+    var is_cpu = player_index - 1 >= _human_players
+    _setup_player_input(player, player_index, is_cpu)
+
+    var player_name = _get_player_name(player_index, is_cpu)
+    player.player_name = player_name
 
     _tiles.get_node("Player").add_child(player)
     _tile_controller.set_node_position(player, pos)
 
-    _player_data[player.player_index] = PlayerData.new(player)
+    var pdata := PlayerData.new(player)
+    _player_data[player.player_index] = pdata
+
+    var owner = player.get_node("PlayerInput").get_network_master()
     _send_client_message(
         GameMessage.PlayerSpawned,
-        {"name": player.name, "pos": pos, "player_index": player_index}
+        {"name": player.name, "pos": pos, "player_index": player_index, "owner": owner, "player_name": pdata.player_name}
     )
 
-func _setup_player_input(player: Player, player_index: int) -> void:
-    if player_index - 1 >= _human_players:
+func _get_player_name(player_index: int, is_cpu: bool) -> String:
+    var player_name := "P%d" % player_index
+    if player_index == 1:
+        player_name = GameData.player_username
+    elif is_cpu:
+        player_name = "CPU%d" % player_index
+    return player_name
+
+func _setup_player_input(player: Player, player_index: int, is_cpu: bool) -> void:
+    if is_cpu:
         var player_input = AIPlayerInput.new(_tile_controller)
         player_input.name = "PlayerInput"
         player.add_child(player_input)
+        player.player_name = "CPU%d" % player_index
 
 func _add_player_score(player_index: int, delta: int) -> void:
     var score := GameData.add_player_score(player_index, delta)
@@ -311,7 +324,7 @@ func _spawn_bomb(pos: Vector2, is_power_bomb: bool, spawner: Player = null) -> v
     _tile_controller.set_node_position(bomb, pos)
     _send_client_message(
         GameMessage.BombSpawned,
-        {"is_power_bomb": is_power_bomb, "name": name, "pos": pos}
+        {"is_power_bomb": is_power_bomb, "name": bomb.name, "pos": pos}
     )
 
     if spawner:
@@ -453,7 +466,7 @@ func _on_player_push_bomb(direction: int, player: Player) -> void:
                 _tile_controller.set_node_position(bomb, next_bomb_pos)
                 _send_client_message(
                     GameMessage.BombMoved,
-                    {"bomb_name": bomb.name, "next_pos": next_pos}
+                    {"path": _tiles.get_path_to(bomb), "next_pos": next_bomb_pos}
                 )
                 yield(_tween_to_snapped_pos(bomb, next_bomb_pos), "completed")
             _tile_controller.set_node_locked(bomb, false)
@@ -509,13 +522,15 @@ func _detect_endgame() -> void:
             _endgame(-1)
 
 func _endgame(winner: int):
+    var winner_name = ""
     if winner != -1:
         _add_player_score(winner, 3)
+        winner_name = _player_data[winner].player_name
     _stop_game()
 
     _send_client_message(
         GameMessage.Endgame,
-        {"winner": winner}
+        {"winner_index": winner, "winner_name": winner_name}
     )
 
 func _get_snapped_pos(map_pos: Vector2) -> Vector2:
@@ -617,7 +632,7 @@ func _handle_ui_message(message_type: int, payload: Dictionary) -> void:
             _hud.update_player_score(payload["player_index"], payload["score"])
 
         GameMessage.PlayerHudSetup:
-            _hud.setup_player_hud(payload["scores"])
+            _hud.setup_player_hud(payload["scores"], payload["names"])
 
         GameMessage.BombExploded:
             _play_fx("FXBoom")
@@ -636,8 +651,8 @@ func _handle_ui_message(message_type: int, payload: Dictionary) -> void:
             _play_fx("FXPush")
 
         GameMessage.Endgame:
-            if payload["winner"] != -1:
-                _hud.show_win(payload["winner"])
+            if payload["winner_index"] != -1:
+                _hud.show_win(payload["winner_name"])
             else:
                 _hud.show_draw()
             _stop_game()
