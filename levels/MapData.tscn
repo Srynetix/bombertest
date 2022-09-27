@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://resources/TileSet.tres" type="TileSet" id=1]
+
+[node name="MapData" type="Node2D"]
+
+[node name="Background" type="TileMap" parent="."]
+modulate = Color( 0.768627, 0.768627, 0.768627, 1 )
+tile_set = ExtResource( 1 )
+format = 1
+
+[node name="Middleground" type="TileMap" parent="."]
+tile_set = ExtResource( 1 )
+format = 1
+
+[node name="Foreground" type="TileMap" parent="."]
+tile_set = ExtResource( 1 )
+format = 1

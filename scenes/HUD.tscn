@@ -1,0 +1,155 @@
+[gd_scene load_steps=9 format=2]
+
+[ext_resource path="res://assets/kenney_fontpackage/Fonts/Kenney Pixel Square.ttf" type="DynamicFontData" id=1]
+[ext_resource path="res://scenes/HUD.gd" type="Script" id=2]
+
+[sub_resource type="DynamicFont" id=1]
+size = 72
+outline_size = 4
+outline_color = Color( 0.454902, 0.454902, 0.454902, 0.623529 )
+use_mipmaps = true
+use_filter = true
+font_data = ExtResource( 1 )
+
+[sub_resource type="DynamicFont" id=4]
+size = 64
+outline_size = 4
+outline_color = Color( 0.376471, 0, 0, 1 )
+use_mipmaps = true
+use_filter = true
+font_data = ExtResource( 1 )
+
+[sub_resource type="Animation" id=2]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/path = NodePath("MarginContainer/TimeLimit:anchor_top")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0 ),
+"transitions": PoolRealArray( 1 ),
+"update": 0,
+"values": [ 0.0 ]
+}
+
+[sub_resource type="Animation" id=3]
+resource_name = "moving"
+length = 2.0
+loop = true
+tracks/0/type = "value"
+tracks/0/path = NodePath("MarginContainer/TimeLimit:anchor_top")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 1, 2 ),
+"transitions": PoolRealArray( 4.92458, 5.27803, 1 ),
+"update": 0,
+"values": [ 0.0, 0.05, 0.0 ]
+}
+
+[sub_resource type="Animation" id=6]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/path = NodePath("MarginContainer/Win:rect_scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0 ),
+"transitions": PoolRealArray( 1 ),
+"update": 0,
+"values": [ Vector2( 1, 1 ) ]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("MarginContainer/Win:rect_rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/keys = {
+"times": PoolRealArray( 0 ),
+"transitions": PoolRealArray( 1 ),
+"update": 0,
+"values": [ 0.0 ]
+}
+
+[sub_resource type="Animation" id=5]
+resource_name = "wins"
+tracks/0/type = "value"
+tracks/0/path = NodePath("MarginContainer/Win:rect_scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 0.5, 1 ),
+"transitions": PoolRealArray( 1, 1, 1 ),
+"update": 0,
+"values": [ Vector2( 0, 0 ), Vector2( 1.5, 1.5 ), Vector2( 1, 1 ) ]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("MarginContainer/Win:rect_rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/keys = {
+"times": PoolRealArray( 0, 0.5, 1 ),
+"transitions": PoolRealArray( 1, 0.112656, 1 ),
+"update": 0,
+"values": [ 0.0, 180.0, 375.0 ]
+}
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource( 2 )
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+anchor_right = 1.0
+margin_bottom = 128.0
+
+[node name="BottomBar" type="HBoxContainer" parent="."]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_top = -196.0
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+custom_constants/margin_right = 20
+custom_constants/margin_top = 20
+custom_constants/margin_left = 20
+custom_constants/margin_bottom = 20
+
+[node name="TimeLimit" type="Label" parent="MarginContainer"]
+margin_left = 532.0
+margin_top = 20.0
+margin_right = 748.0
+margin_bottom = 128.0
+size_flags_horizontal = 4
+size_flags_vertical = 0
+custom_colors/font_color = Color( 1, 1, 1, 0.623529 )
+custom_fonts/font = SubResource( 1 )
+text = "Time"
+
+[node name="Win" type="Label" parent="MarginContainer"]
+margin_left = 640.0
+margin_top = 312.0
+margin_right = 640.0
+margin_bottom = 408.0
+size_flags_horizontal = 4
+custom_fonts/font = SubResource( 4 )
+
+[node name="TimeLimitAnimationPlayer" type="AnimationPlayer" parent="."]
+autoplay = "moving"
+anims/RESET = SubResource( 2 )
+anims/moving = SubResource( 3 )
+
+[node name="WinAnimationPlayer" type="AnimationPlayer" parent="."]
+anims/RESET = SubResource( 6 )
+anims/wins = SubResource( 5 )

@@ -2,15 +2,15 @@
 
 importer="texture"
 type="StreamTexture"
-path="res://.import/sokoban_tilesheet.png-cc06722bc3cbfdba4eb27a7a4be2cc8a.stex"
+path="res://.import/item_power.png-6f9b80fec1eb26facda4586323a86a90.stex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/kenney_sokobanpack/Tilesheet/sokoban_tilesheet.png"
-dest_files=[ "res://.import/sokoban_tilesheet.png-cc06722bc3cbfdba4eb27a7a4be2cc8a.stex" ]
+source_file="res://assets/local/item_power.png"
+dest_files=[ "res://.import/item_power.png-6f9b80fec1eb26facda4586323a86a90.stex" ]
 
 [params]
 
@@ -20,7 +20,7 @@ compress/hdr_mode=0
 compress/bptc_ldr=0
 compress/normal_map=0
 flags/repeat=0
-flags/filter=true
+flags/filter=false
 flags/mipmaps=false
 flags/anisotropic=false
 flags/srgb=2
