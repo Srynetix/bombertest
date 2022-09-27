@@ -10,6 +10,24 @@ const ItemScene = preload("res://scenes/Item.tscn")
 const BubbleScene = preload("res://scenes/Bubble.tscn")
 const ExplosionFXScene = preload("res://scenes/ExplosionFX.tscn")
 
+enum GameMessage {
+    BombExploded,
+    BombMoved,
+    BombSpawned,
+    CrateSpawned,
+    Endgame
+    ExplosionSpawned,
+    ItemPicked,
+    ItemSpawned,
+    PlayerExploded,
+    PlayerHudSetup,
+    PlayerMoved,
+    PlayerScoreUpdated,
+    PlayerSpawned,
+    TileRemoved,
+    WallSpawned,
+}
+
 class PlayerData:
     const DEFAULT_BOMB_LIMIT := 3
 
@@ -44,7 +62,7 @@ class PlayerData:
     func set_item_inactive(item_type: int) -> void:
         active_items.erase(item_type)
 
-export var item_spawn_frequency := 2.0
+export var item_spawn_frequency := 10.0
 export var game_time_limit := 120
 
 signal game_over()
@@ -179,8 +197,10 @@ func _setup_player_hud():
     for idx in _player_data:
         scores[idx] = GameData.last_scores.get(idx, 0)
     GameData.update_scores(scores)
-    _hud.setup_player_hud(scores)
-    _on_player_hud_setup(scores)
+    _send_client_message(
+        GameMessage.PlayerHudSetup,
+        {"scores": scores}
+    )
 
 func _play_fx(name: String) -> void:
     var audio_fx := GameLoadCache.instantiate_scene("TempAudioFX") as TempAudioFX
@@ -188,9 +208,6 @@ func _play_fx(name: String) -> void:
     audio_fx.max_pitch_offset = 1.5
     audio_fx.stream = GameLoadCache.load_resource(name)
     add_child(audio_fx)
-
-func _on_player_hud_setup(_scores: Dictionary) -> void:
-    pass
 
 func _spawn_player(pos: Vector2, player_index: int) -> void:
     var player: Player = PlayerScene.instance()
@@ -218,7 +235,10 @@ func _spawn_player(pos: Vector2, player_index: int) -> void:
     _tile_controller.set_node_position(player, pos)
 
     _player_data[player.player_index] = PlayerData.new(player)
-    _on_player_spawned(pos, player_index, player.name)
+    _send_client_message(
+        GameMessage.PlayerSpawned,
+        {"name": player.name, "pos": pos, "player_index": player_index}
+    )
 
 func _setup_player_input(player: Player, player_index: int) -> void:
     if player_index - 1 >= _human_players:
@@ -228,13 +248,10 @@ func _setup_player_input(player: Player, player_index: int) -> void:
 
 func _add_player_score(player_index: int, delta: int) -> void:
     var score := GameData.add_player_score(player_index, delta)
-    _on_player_score_update(player_index, score)
-
-func _on_player_score_update(player_index: int, score: int) -> void:
-    _hud.update_player_score(player_index, score)
-
-func _on_player_spawned(_pos: Vector2, _player_index: int, _name: String) -> void:
-    pass
+    _send_client_message(
+        GameMessage.PlayerScoreUpdated,
+        {"player_index": player_index, "score": score}
+    )
 
 func _spawn_crate(pos: Vector2) -> void:
     var crate: Crate = CrateScene.instance()
@@ -243,10 +260,10 @@ func _spawn_crate(pos: Vector2) -> void:
     crate.name = "Crate%d" % _get_free_item_id()
     _tiles.get_node("BelowPlayer").add_child(crate)
     _tile_controller.set_node_position(crate, pos)
-    _on_crate_spawned(pos, crate.name)
-
-func _on_crate_spawned(_pos: Vector2, _name: String) -> void:
-    pass
+    _send_client_message(
+        GameMessage.CrateSpawned,
+        {"name": crate.name, "pos": pos}
+    )
 
 func _spawn_wall(pos: Vector2) -> void:
     var wall: Wall = WallScene.instance()
@@ -254,10 +271,10 @@ func _spawn_wall(pos: Vector2) -> void:
     wall.name = "Wall%d" % _get_free_item_id()
     _tiles.get_node("BelowPlayer").add_child(wall)
     _tile_controller.set_node_position(wall, pos)
-    _on_wall_spawned(pos, wall.name)
-
-func _on_wall_spawned(_pos: Vector2, _name: String) -> void:
-    pass
+    _send_client_message(
+        GameMessage.WallSpawned,
+        {"name": wall.name, "pos": pos}
+    )
 
 func _spawn_item_at_empty_position() -> void:
     var pos := _tile_controller.get_random_empty_position()
@@ -273,10 +290,10 @@ func _spawn_item_at_empty_position() -> void:
     item.connect("tree_exiting", self, "_on_tile_removed", [ item ])
     _tiles.get_node("BelowPlayer").add_child(item)
     _tile_controller.set_node_position(item, pos)
-    _on_item_spawned(pos, item.item_type, item.name)
-
-func _on_item_spawned(_pos: Vector2, _item_type: int, _name: String) -> void:
-    pass
+    _send_client_message(
+        GameMessage.ItemSpawned,
+        {"item_type": item.item_type, "name": item.name, "pos": pos}
+    )
 
 func _spawn_bomb(pos: Vector2, is_power_bomb: bool, spawner: Player = null) -> void:
     var targets = _tile_controller.get_nodes_at_position(pos)
@@ -292,17 +309,21 @@ func _spawn_bomb(pos: Vector2, is_power_bomb: bool, spawner: Player = null) -> v
     bomb.name = "Bomb%d" % _get_free_item_id()
     _tiles.get_node("BelowPlayer").add_child(bomb)
     _tile_controller.set_node_position(bomb, pos)
-    _on_bomb_spawned(pos, is_power_bomb, bomb.name)
+    _send_client_message(
+        GameMessage.BombSpawned,
+        {"is_power_bomb": is_power_bomb, "name": name, "pos": pos}
+    )
 
     if spawner:
         var pdata := _player_data[spawner.player_index] as PlayerData
         pdata.incr_active_bombs()
 
-func _on_bomb_spawned(_pos: Vector2, _is_power_bomb: bool, _name: String) -> void:
-    pass
-
 func _on_tile_removed(node: Node2D) -> void:
     _tile_controller.remove_node_position(node)
+    _send_client_message(
+        GameMessage.TileRemoved,
+        {"path": _tiles.get_path_to(node)}
+    )
 
 func _spawn_explosion(bomb_origin: Bomb, pos: Vector2) -> bool:
     var targets := _tile_controller.get_nodes_at_position(pos)
@@ -317,8 +338,7 @@ func _spawn_explosion(bomb_origin: Bomb, pos: Vector2) -> bool:
             if !player.is_alive():
                 continue
 
-            _on_player_explode(player)
-            player.explode()
+            _explode_player(player)
 
             # Handle score
             var spawner := bomb_origin.spawner
@@ -342,11 +362,11 @@ func _spawn_explosion(bomb_origin: Bomb, pos: Vector2) -> bool:
     explosion.spawner = bomb_origin.spawner
     _tiles.get_node("BelowPlayer").add_child(explosion)
     _tile_controller.set_node_position(explosion, pos)
-    _on_explosion_spawned(pos)
+    _send_client_message(
+        GameMessage.ExplosionSpawned,
+        {"pos": pos}
+    )
     return true
-
-func _on_explosion_spawned(_pos: Vector2) -> void:
-    pass
 
 #########
 # Events
@@ -366,12 +386,13 @@ func _on_player_movement(direction: int, player: Player) -> void:
                 var item := target as Item
                 item.pickup()
                 pdata.set_item_active(item.item_type)
-                _hud.add_player_item(player.player_index, item.item_type)
-                _on_item_pick(player.player_index, item)
+                _send_client_message(
+                    GameMessage.ItemPicked,
+                    {"player_index": player.player_index, "item_name": item.name, "item_type": item.item_type}
+                )
 
             elif target is ExplosionFX:
-                _on_player_explode(player)
-                player.explode()
+                _explode_player(player)
 
                 # Handle score
                 _add_player_score(player.player_index, -1)
@@ -386,21 +407,15 @@ func _on_player_movement(direction: int, player: Player) -> void:
                 return
 
         _tile_controller.set_node_position(player, next_pos)
-        _on_player_moved(player, next_pos)
+        _send_client_message(
+            GameMessage.PlayerMoved,
+            {"player_name": player.name, "direction": player._direction, "next_pos": next_pos}
+        )
         yield(_tween_to_snapped_pos(player, next_pos), "completed")
 
     # Player can be destroyed
     if is_instance_valid(player):
         player.unlock()
-
-func _on_item_pick(_player_index: int, _item: Item) -> void:
-    _play_fx("FXPowerup")
-
-func _on_player_moved(_player: Player, _next_pos: Vector2) -> void:
-    pass
-
-func _on_bomb_moved(_bomb: Bomb, _next_pos: Vector2) -> void:
-    _play_fx("FXPush")
 
 func _on_player_spawn_bomb(player: Player) -> void:
     if !_game_running:
@@ -411,8 +426,6 @@ func _on_player_spawn_bomb(player: Player) -> void:
         if pdata.can_place_bomb():
             var current_pos := _tile_controller.get_node_position(player)
             _spawn_bomb(current_pos, _get_player_item_status(player, Item.ItemType.PowerBomb), player)
-
-        _play_fx("FXClick")
 
 func _on_player_push_bomb(direction: int, player: Player) -> void:
     if !_game_running:
@@ -438,15 +451,22 @@ func _on_player_push_bomb(direction: int, player: Player) -> void:
             var next_bomb_pos := _add_direction_to_pos(next_pos, direction)
             if _can_move_to_position(bomb, next_bomb_pos):
                 _tile_controller.set_node_position(bomb, next_bomb_pos)
-                _on_bomb_moved(bomb, next_bomb_pos)
+                _send_client_message(
+                    GameMessage.BombMoved,
+                    {"bomb_name": bomb.name, "next_pos": next_pos}
+                )
                 yield(_tween_to_snapped_pos(bomb, next_bomb_pos), "completed")
             _tile_controller.set_node_locked(bomb, false)
 
 func _on_player_dead(player: Player) -> void:
     _player_data.erase(player.player_index)
 
-func _on_player_explode(_player: Player) -> void:
-    _play_fx("FXDied")
+func _explode_player(player: Player) -> void:
+    player.explode()
+    _send_client_message(
+        GameMessage.PlayerExploded,
+        {"player_path": _tiles.get_path_to(player)}
+    )
 
 func _on_bomb_explosion(bomb: Bomb) -> void:
     var pos = _tile_controller.get_node_position(bomb)
@@ -471,7 +491,10 @@ func _on_bomb_explosion(bomb: Bomb) -> void:
         _spawn_explosion(bomb, pos + Vector2(0, -1))
         _spawn_explosion(bomb, pos + Vector2(0, 1))
 
-    _play_fx("FXBoom")
+    _send_client_message(
+        GameMessage.BombExploded,
+        {}
+    )
 
 #########
 # Helpers
@@ -487,11 +510,13 @@ func _detect_endgame() -> void:
 
 func _endgame(winner: int):
     if winner != -1:
-        _hud.show_win(winner)
         _add_player_score(winner, 3)
-    else:
-        _hud.show_draw()
     _stop_game()
+
+    _send_client_message(
+        GameMessage.Endgame,
+        {"winner": winner}
+    )
 
 func _get_snapped_pos(map_pos: Vector2) -> Vector2:
     return _mg_tilemap.map_to_world(map_pos) + _cell_size / 2
@@ -538,6 +563,9 @@ func _add_direction_to_pos(pos: Vector2, direction: int) -> Vector2:
     return Vector2()
 
 func _stop_game() -> void:
+    if !_game_running:
+        return
+
     _game_running = false
     _item_timer.stop()
 
@@ -579,3 +607,37 @@ func _prepare_camera() -> void:
 func _get_free_item_id() -> int:
     _last_free_id = wrapi(_last_free_id + 1, 0, 100_000)
     return _last_free_id
+
+func _send_client_message(message_type: int, payload: Dictionary) -> void:
+    _handle_ui_message(message_type, payload)
+
+func _handle_ui_message(message_type: int, payload: Dictionary) -> void:
+    match message_type:
+        GameMessage.PlayerScoreUpdated:
+            _hud.update_player_score(payload["player_index"], payload["score"])
+
+        GameMessage.PlayerHudSetup:
+            _hud.setup_player_hud(payload["scores"])
+
+        GameMessage.BombExploded:
+            _play_fx("FXBoom")
+
+        GameMessage.BombSpawned:
+            _play_fx("FXClick")
+
+        GameMessage.ItemPicked:
+            _hud.add_player_item(payload["player_index"], payload["item_type"])
+            _play_fx("FXPowerup")
+
+        GameMessage.PlayerExploded:
+            _play_fx("FXDied")
+
+        GameMessage.BombMoved:
+            _play_fx("FXPush")
+
+        GameMessage.Endgame:
+            if payload["winner"] != -1:
+                _hud.show_win(payload["winner"])
+            else:
+                _hud.show_draw()
+            _stop_game()

@@ -80,13 +80,6 @@ func _continue_setup() -> void:
     yield(_hud.show_ready(), "completed")
     _start_game()
 
-func _on_player_hud_setup(scores: Dictionary) -> void:
-    ._on_player_hud_setup(scores)
-    rpc("_client_on_player_hud_setup", scores)
-
-func _on_player_score_update(player_index: int, score: int) -> void:
-    rpc("_client_on_player_score_update", player_index, score)
-
 func _setup_player_input(player: Player, player_index: int) -> void:
     var players := _get_server_peer().get_players()
     var player_ids := players.keys()
@@ -101,123 +94,99 @@ func _setup_player_input(player: Player, player_index: int) -> void:
         player_input.set_network_master(owner)
         player.add_child(player_input)
 
-func _on_player_spawned(pos: Vector2, player_index: int, name: String) -> void:
-    rpc("_on_client_player_spawned", pos, player_index, name)
-func _on_wall_spawned(pos: Vector2, name: String) -> void:
-    rpc("_on_client_wall_spawned", pos, name)
-func _on_crate_spawned(pos: Vector2, name: String) -> void:
-    rpc("_on_client_crate_spawned", pos, name)
-func _on_item_spawned(pos: Vector2, item_type: int, name: String) -> void:
-    rpc("_on_client_item_spawned", pos, item_type, name)
-func _on_bomb_spawned(pos: Vector2, is_power_bomb: bool, name: String) -> void:
-    rpc("_on_client_bomb_spawned", pos, is_power_bomb, name)
-func _on_explosion_spawned(pos: Vector2) -> void:
-    rpc("_on_client_explosion_spawned", pos)
-func _on_player_moved(player: Player, next_pos: Vector2) -> void:
-    rpc("_on_client_player_moved", player.name, player._direction, next_pos)
-func _on_bomb_moved(bomb: Bomb, next_pos: Vector2) -> void:
-    rpc("_on_client_bomb_moved", bomb.name, next_pos)
-
 func _on_tile_removed(node: Node2D) -> void:
-    ._on_tile_removed(node)
+    _tile_controller.remove_node_position(node)
 
     # Do not spam clients with tile removal after game over (like on scene disposal)
     if !_game_ended && !_get_server_peer().is_quitting():
-        rpc("_on_client_tile_removed", _tiles.get_path_to(node))
+        _send_client_message(
+            GameMessage.TileRemoved,
+            {"path": _tiles.get_path_to(node)}
+        )
 
-func _on_player_explode(player: Player) -> void:
-    rpc("_on_client_player_explode", _tiles.get_path_to(player))
+func _send_client_message(message_type: int, payload: Dictionary):
+    rpc("_on_client_message", message_type, payload)
 
-func _endgame(winner: int) -> void:
-    ._endgame(winner)
-    rpc("_on_client_endgame", winner)
+#################
+# Client code
 
-func _on_item_pick(player_index: int, item: Item) -> void:
-    rpc("_on_client_item_pick", player_index, item.name, item.item_type)
+puppet func _on_client_message(message_type: int, payload: Dictionary) -> void:
+    match message_type:
+        GameMessage.PlayerSpawned:
+            var player: Player = PlayerScene.instance()
+            player.position = _get_snapped_pos(payload["pos"])
+            player.player_index = payload["player_index"]
+            player.player_color = SxRand.choice_array(PLAYER_COLOR_ROULETTE)
+            player.player_name = payload["name"]
+            player.name = payload["name"]
+            player.lock()
 
-puppet func _on_client_endgame(winner: int):
-    ._endgame(winner)
+            # Dummy input
+            var player_input = PlayerInput.new()
+            player_input.name = "PlayerInput"
+            player.add_child(player_input)
+            player.set_process(false)
 
-puppet func _on_client_player_spawned(pos: Vector2, player_index: int, name: String) -> void:
-    var player: Player = PlayerScene.instance()
-    player.position = _get_snapped_pos(pos)
-    player.player_index = player_index
-    player.player_color = SxRand.choice_array(PLAYER_COLOR_ROULETTE)
-    player.player_name = name
-    player.name = name
-    player.lock()
+            _tiles.get_node("Player").add_child(player)
+            _mg_tilemap.set_cellv(payload["pos"], -1)
 
-    # Dummy input
-    var player_input = PlayerInput.new()
-    player_input.name = "PlayerInput"
-    player.add_child(player_input)
-    player.set_process(false)
+        GameMessage.WallSpawned:
+            var wall: Wall = WallScene.instance()
+            wall.position = _get_snapped_pos(payload["pos"])
+            wall.name = payload["name"]
+            _tiles.get_node("BelowPlayer").add_child(wall)
+            _mg_tilemap.set_cellv(payload["pos"], -1)
 
-    _tiles.get_node("Player").add_child(player)
-    _mg_tilemap.set_cellv(pos, -1)
+        GameMessage.CrateSpawned:
+            var crate: Crate = CrateScene.instance()
+            crate.position = _get_snapped_pos(payload["pos"])
+            crate.name = payload["name"]
+            _tiles.get_node("BelowPlayer").add_child(crate)
+            _mg_tilemap.set_cellv(payload["pos"], -1)
 
-puppet func _on_client_wall_spawned(pos: Vector2, name: String) -> void:
-    var wall: Wall = WallScene.instance()
-    wall.position = _get_snapped_pos(pos)
-    wall.name = name
-    _tiles.get_node("BelowPlayer").add_child(wall)
-    _mg_tilemap.set_cellv(pos, -1)
+        GameMessage.ItemSpawned:
+            var item: Item = ItemScene.instance()
+            item.item_type = payload["item_type"]
+            item.position = _get_snapped_pos(payload["pos"])
+            item.name = payload["name"]
+            _tiles.get_node("BelowPlayer").add_child(item)
 
-puppet func _on_client_crate_spawned(pos: Vector2, name: String) -> void:
-    var crate: Crate = CrateScene.instance()
-    crate.position = _get_snapped_pos(pos)
-    crate.name = name
-    _tiles.get_node("BelowPlayer").add_child(crate)
-    _mg_tilemap.set_cellv(pos, -1)
+        GameMessage.BombSpawned:
+            var bomb: Bomb = BombScene.instance()
+            bomb.power_bomb = payload["is_power_bomb"]
+            bomb.position = _get_snapped_pos(payload["pos"])
+            bomb.name = payload["name"]
+            _tiles.get_node("BelowPlayer").add_child(bomb)
 
-puppet func _on_client_item_spawned(pos: Vector2, item_type: int, name: String) -> void:
-    var item: Item = ItemScene.instance()
-    item.item_type = item_type
-    item.position = _get_snapped_pos(pos)
-    item.name = name
-    _tiles.get_node("BelowPlayer").add_child(item)
+        GameMessage.ExplosionSpawned:
+            var explosion: Node2D = ExplosionFXScene.instance()
+            explosion.position = _get_snapped_pos(payload["pos"])
+            _tiles.get_node("BelowPlayer").add_child(explosion)
 
-puppet func _on_client_bomb_spawned(pos: Vector2, is_power_bomb: bool, name: String) -> void:
-    var bomb: Bomb = BombScene.instance()
-    bomb.power_bomb = is_power_bomb
-    bomb.position = _get_snapped_pos(pos)
-    bomb.name = name
-    _tiles.get_node("BelowPlayer").add_child(bomb)
+        GameMessage.PlayerMoved:
+            var player := _tiles.get_node("Player/%s" % payload["player_name"]) as Player
+            player._direction = payload["direction"]
+            player._move_state = Player.MoveState.MOVING
+            player._update_animation_state()
+            yield(_tween_to_snapped_pos(player, payload["next_pos"]), "completed")
+            player._move_state = Player.MoveState.IDLE
+            player._update_animation_state()
 
-puppet func _on_client_explosion_spawned(pos: Vector2) -> void:
-    var explosion: Node2D = ExplosionFXScene.instance()
-    explosion.position = _get_snapped_pos(pos)
-    _tiles.get_node("BelowPlayer").add_child(explosion)
+        GameMessage.BombMoved:
+            var bomb := _tiles.get_node("BelowPlayer/%s" % payload["bomb_name"]) as Bomb
+            yield(_tween_to_snapped_pos(bomb, payload["next_pos"]), "completed")
 
-puppet func _on_client_player_moved(player_name: String, direction: int, next_pos: Vector2) -> void:
-    var player := _tiles.get_node("Player/%s" % player_name) as Player
-    player._direction = direction
-    player._move_state = Player.MoveState.MOVING
-    player._update_animation_state()
-    yield(_tween_to_snapped_pos(player, next_pos), "completed")
-    player._move_state = Player.MoveState.IDLE
-    player._update_animation_state()
+        GameMessage.PlayerExploded:
+            var player := _tiles.get_node(payload["player_path"]) as Player
+            player.explode()
 
-puppet func _on_client_bomb_moved(bomb_name: String, next_pos: Vector2) -> void:
-    var bomb := _tiles.get_node("BelowPlayer/%s" % bomb_name) as Bomb
-    yield(_tween_to_snapped_pos(bomb, next_pos), "completed")
+        GameMessage.TileRemoved:
+            var t = _tiles.get_node_or_null(payload["path"])
+            if t != null:
+                t.queue_free()
 
-puppet func _on_client_player_explode(player_path: String) -> void:
-    var player := _tiles.get_node(player_path) as Player
-    player.explode()
+        GameMessage.ItemPicked:
+            var item := _tiles.get_node("BelowPlayer/%s" % payload["item_name"]) as Item
+            item.pickup()
 
-puppet func _on_client_tile_removed(path: String) -> void:
-    var t = _tiles.get_node_or_null(path)
-    if t != null:
-        t.queue_free()
-
-remote func _client_on_player_score_update(player_index: int, score: int) -> void:
-    _hud.update_player_score(player_index, score)
-
-puppet func _client_on_player_hud_setup(scores: Dictionary) -> void:
-    _hud.setup_player_hud(scores)
-
-puppet func _on_client_item_pick(player_index: int, item_name: String, item_type: int) -> void:
-    var item := _tiles.get_node("BelowPlayer/%s" % item_name) as Item
-    item.pickup()
-    _hud.add_player_item(player_index, item_type)
+    _handle_ui_message(message_type, payload)
