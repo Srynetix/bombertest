@@ -52,6 +52,10 @@ func _setup_menu() -> void:
     host_btn.connect("pressed", self, "_show_host_menu")
     back_btn.connect("pressed", self, "_go_back_title")
 
+    if OS.get_name() == "HTML5":
+        # You can't create a WebSocket server on Web platform
+        host_btn.hide()
+
 func _setup_join_menu() -> void:
     var join_btn := _join_menu.get_node("Join") as Button
     var back_btn := _join_menu.get_node("Back") as Button
@@ -115,6 +119,7 @@ func _join_server() -> void:
     var port := int(spl[1] as String)
 
     _client_peer = SxClientPeer.new()
+    _client_peer.use_websockets = GameData.use_websockets
     _client_peer.server_address = address
     _client_peer.server_port = port
     _client_peer.connect("connected_to_server", self, "_on_client_connected", [ false ])
@@ -129,6 +134,7 @@ func _join_listen_server() -> void:
     var port := int(spl[1] as String)
 
     _client_peer = SxClientPeer.new()
+    _client_peer.use_websockets = GameData.use_websockets
     _client_peer.server_address = address
     _client_peer.server_port = port
     _client_peer.connect("connected_to_server", self, "_on_client_connected", [ true ])
@@ -137,6 +143,7 @@ func _join_listen_server() -> void:
 
 func _start_server() -> void:
     _ls_peer = SxListenServerPeer.new()
+    _ls_peer.use_websockets = GameData.use_websockets
     _ls_peer.server_port = _server_port
     _ls_peer.max_players = _max_players
     add_child(_ls_peer)

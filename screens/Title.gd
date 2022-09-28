@@ -14,10 +14,6 @@ func _ready() -> void:
     _online_btn.connect("pressed", self, "_start_game_online")
     _options_btn.connect("pressed", self, "_open_options")
 
-    if OS.get_name() == "HTML5":
-        # Networking with ENet is not available for Web platform
-        _online_btn.hide()
-
 func _start_game_solo() -> void:
     GameData.set_game_mode(Enums.GameMode.SOLO)
     GameData.game_human_players = 1

@@ -15,12 +15,16 @@ var autostart_server := false
 var autostart_server_port := 12341
 var autostart_client := false
 var autostart_client_server_ip := "127.0.0.1:12341"
+var use_websockets := false
 
 const SAVE_FILE := "user://save.dat"
 
 func _ready():
     load_from_disk(SAVE_FILE)
     player_username = load_value("player_username", "Player")
+
+    if OS.get_name() == "HTML5":
+        use_websockets = true
 
 func set_game_mode(mode: int) -> void:
     game_mode = mode

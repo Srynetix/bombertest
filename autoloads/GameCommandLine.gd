@@ -18,6 +18,9 @@ func _handle_args(args: Args) -> void:
         GameData.set_game_mode(Enums.GameMode.SOLO)
         GameData.set_map_name("random")
 
+    if args.options.has("websockets"):
+        GameData.use_websockets = true
+
     if args.options.has("map-name"):
         GameData.set_map_name(args.options["map-name"])
 
