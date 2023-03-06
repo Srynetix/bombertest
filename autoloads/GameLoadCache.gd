@@ -1,3 +1,10 @@
+# Role:
+#   A scene cache (inheriting SxLoadCache).
+#
+#   It will load resources and scenes, storing them in a map to a specific key,
+#   it's useful to avoid lags during resource loading in game, by forcing the
+#   game to load resources at startup.
+
 extends SxLoadCache
 
 func load_resources() -> void:

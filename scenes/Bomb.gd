@@ -1,3 +1,6 @@
+# Role:
+#   A bomb / power bomb, spawned by players in the game.
+
 extends Sprite
 class_name Bomb
 

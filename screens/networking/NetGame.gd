@@ -3,6 +3,8 @@ class_name NetGame
 
 onready var _lobby := get_parent()
 
+var _player_mapping := {}
+
 func _get_server_peer() -> SxServerPeer:
     return get_parent()._server_peer
 
@@ -57,6 +59,10 @@ puppet func _setup_level(bg_data, mg_data):
 
 puppet func _client_start_game() -> void:
     yield(_hud.show_ready(), "completed")
+
+    for idx in _player_mapping:
+        var pdata := _player_data[idx] as PlayerData
+        pdata.player.unlock()
     _game_running = true
 
 puppet func _client_game_setup() -> void:
@@ -69,7 +75,11 @@ func _get_player_name(player_index: int, is_cpu: bool) -> String:
         var players := _get_server_peer().get_players()
         var player_ids := players.keys()
         var owner := player_ids[player_index - 1] as int
+        rpc("_register_player_index", player_index, owner)
         return players[owner]
+
+puppet func _register_player_index(player_index: int, peer_id: int):
+    _player_mapping[player_index] = peer_id
 
 func _continue_setup() -> void:
     _tile_controller = TileController.new(_map_rect.size)
@@ -113,6 +123,8 @@ func _on_tile_removed(node: Node2D) -> void:
         )
 
 func _send_client_message(message_type: int, payload: Dictionary):
+    # Yay, lag!
+    yield(get_tree().create_timer(0.5), "timeout")
     rpc("_on_client_message", message_type, payload)
 
 #################
@@ -128,21 +140,35 @@ puppet func _on_client_message(message_type: int, payload: Dictionary) -> void:
             player.player_name = payload["player_name"]
             player.name = payload["name"]
             player.lock()
+            _tile_controller.set_node_position(player, payload["pos"])
 
-            # Dummy input
-            var player_input = PlayerInput.new()
-            player_input.name = "PlayerInput"
-            player.add_child(player_input)
-            player.set_process(false)
+            if payload["player_index"] in _player_mapping && _player_mapping[payload["player_index"]] == SxNetwork.get_nuid(self):
+                # Local input
+                var player_input = LocalPlayerInput.new()
+                player_input.name = "PlayerInput"
+                player.add_child(player_input)
+                player.set_process(true)
+                player.connect("move", self, "_on_player_movement", [ player ])
+
+            else:
+                # Dummy input
+                var player_input = PlayerInput.new()
+                player_input.name = "PlayerInput"
+                player.add_child(player_input)
+                player.set_process(false)
 
             _tiles.get_node("Player").add_child(player)
             _mg_tilemap.set_cellv(payload["pos"], -1)
+
+            var pdata := PlayerData.new(player)
+            _player_data[player.player_index] = pdata
 
         GameMessage.WallSpawned:
             var wall: Wall = WallScene.instance()
             wall.position = _get_snapped_pos(payload["pos"])
             wall.name = payload["name"]
             _tiles.get_node("BelowPlayer").add_child(wall)
+            _tile_controller.set_node_position(wall, payload["pos"])
             _mg_tilemap.set_cellv(payload["pos"], -1)
 
         GameMessage.CrateSpawned:
@@ -151,6 +177,7 @@ puppet func _on_client_message(message_type: int, payload: Dictionary) -> void:
             crate.name = payload["name"]
             _tiles.get_node("BelowPlayer").add_child(crate)
             _mg_tilemap.set_cellv(payload["pos"], -1)
+            _tile_controller.set_node_position(crate, payload["pos"])
 
         GameMessage.ItemSpawned:
             var item: Item = ItemScene.instance()
@@ -158,6 +185,7 @@ puppet func _on_client_message(message_type: int, payload: Dictionary) -> void:
             item.position = _get_snapped_pos(payload["pos"])
             item.name = payload["name"]
             _tiles.get_node("BelowPlayer").add_child(item)
+            _tile_controller.set_node_position(item, payload["pos"])
 
         GameMessage.BombSpawned:
             var bomb: Bomb = BombScene.instance()
@@ -165,11 +193,13 @@ puppet func _on_client_message(message_type: int, payload: Dictionary) -> void:
             bomb.position = _get_snapped_pos(payload["pos"])
             bomb.name = payload["name"]
             _tiles.get_node("BelowPlayer").add_child(bomb)
+            _tile_controller.set_node_position(bomb, payload["pos"])
 
         GameMessage.ExplosionSpawned:
             var explosion: Node2D = ExplosionFXScene.instance()
             explosion.position = _get_snapped_pos(payload["pos"])
             _tiles.get_node("BelowPlayer").add_child(explosion)
+            _tile_controller.set_node_position(explosion, payload["pos"])
 
         GameMessage.PlayerMoved:
             var player := _tiles.get_node("Player/%s" % payload["player_name"]) as Player

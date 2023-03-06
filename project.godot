@@ -8,6 +8,89 @@
 
 config_version=4
 
+_global_script_class_icons={
+"AIPlayerInput": "",
+"Bomb": "",
+"Bubble": "",
+"Crate": "",
+"Enums": "",
+"ExplosionFX": "",
+"GameAStar": "",
+"GameManager": "",
+"HUD": "",
+"Item": "",
+"LocalPlayerInput": "",
+"MapRandomizer": "",
+"NetGame": "",
+"NetPlayerInput": "",
+"Player": "",
+"PlayerHUD": "",
+"PlayerInput": "",
+"SxArray": "",
+"SxAudioMultiStreamPlayer": "",
+"SxBetterBlur": "",
+"SxBuffer": "",
+"SxClientPeer": "",
+"SxClientRPC": "",
+"SxCmdLineParser": "",
+"SxColor": "",
+"SxContainer": "",
+"SxDebugInfo": "",
+"SxDebugTools": "",
+"SxDoubleTap": "",
+"SxFAButton": "",
+"SxFAFont": "",
+"SxFALabel": "",
+"SxFXCamera": "",
+"SxFXChromaticAberration": "",
+"SxFXDissolve": "",
+"SxFXGrayscale": "",
+"SxFadingRichTextLabel": "",
+"SxFullScreenAcceptDialog": "",
+"SxFullScreenConfirmationDialog": "",
+"SxFullScreenDialog": "",
+"SxFullScreenFileDialog": "",
+"SxGameData": "",
+"SxGlobalAudioFxPlayer": "",
+"SxGlobalMusicPlayer": "",
+"SxInput": "",
+"SxItemList": "",
+"SxJson": "",
+"SxListenServerPeer": "",
+"SxLoadCache": "",
+"SxLog": "",
+"SxLogPanel": "",
+"SxMath": "",
+"SxMotionBlur": "",
+"SxNetwork": "",
+"SxNode": "",
+"SxNodeTracer": "",
+"SxNodeTracerSystem": "",
+"SxNodeTracerUI": "",
+"SxOS": "",
+"SxRPCService": "",
+"SxRand": "",
+"SxSceneRunner": "",
+"SxSceneTransitioner": "",
+"SxServerPeer": "",
+"SxServerRPC": "",
+"SxShader": "",
+"SxShockwave": "",
+"SxSyncBarrier": "",
+"SxSyncInput": "",
+"SxSyncPeerInput": "",
+"SxText": "",
+"SxTileMap": "",
+"SxUI": "",
+"SxVignette": "",
+"SxVirtualButton": "",
+"SxVirtualControls": "",
+"SxVirtualJoystick": "",
+"TempAudioFX": "",
+"TileController": "",
+"Utils": "",
+"Wall": ""
+}
 _global_script_classes=[ {
 "base": "Node",
 "class": "AIPlayerInput",
@@ -173,6 +256,21 @@ _global_script_classes=[ {
 "class": "SxFXCamera",
 "language": "GDScript",
 "path": "res://addons/sxgd/nodes/fx/SxFXCamera/SxFXCamera.gd"
+}, {
+"base": "ColorRect",
+"class": "SxFXChromaticAberration",
+"language": "GDScript",
+"path": "res://addons/sxgd/nodes/fx/screen-effects/SxFXChromaticAberration/SxFXChromaticAberration.gd"
+}, {
+"base": "ColorRect",
+"class": "SxFXDissolve",
+"language": "GDScript",
+"path": "res://addons/sxgd/nodes/fx/screen-effects/SxFXDissolve/SxFXDissolve.gd"
+}, {
+"base": "ColorRect",
+"class": "SxFXGrayscale",
+"language": "GDScript",
+"path": "res://addons/sxgd/nodes/fx/screen-effects/SxFXGrayscale/SxFXGrayscale.gd"
 }, {
 "base": "RichTextLabel",
 "class": "SxFadingRichTextLabel",
@@ -399,86 +497,6 @@ _global_script_classes=[ {
 "language": "GDScript",
 "path": "res://scenes/Wall.gd"
 } ]
-_global_script_class_icons={
-"AIPlayerInput": "",
-"Bomb": "",
-"Bubble": "",
-"Crate": "",
-"Enums": "",
-"ExplosionFX": "",
-"GameAStar": "",
-"GameManager": "",
-"HUD": "",
-"Item": "",
-"LocalPlayerInput": "",
-"MapRandomizer": "",
-"NetGame": "",
-"NetPlayerInput": "",
-"Player": "",
-"PlayerHUD": "",
-"PlayerInput": "",
-"SxArray": "",
-"SxAudioMultiStreamPlayer": "",
-"SxBetterBlur": "",
-"SxBuffer": "",
-"SxClientPeer": "",
-"SxClientRPC": "",
-"SxCmdLineParser": "",
-"SxColor": "",
-"SxContainer": "",
-"SxDebugInfo": "",
-"SxDebugTools": "",
-"SxDoubleTap": "",
-"SxFAButton": "",
-"SxFAFont": "",
-"SxFALabel": "",
-"SxFXCamera": "",
-"SxFadingRichTextLabel": "",
-"SxFullScreenAcceptDialog": "",
-"SxFullScreenConfirmationDialog": "",
-"SxFullScreenDialog": "",
-"SxFullScreenFileDialog": "",
-"SxGameData": "",
-"SxGlobalAudioFxPlayer": "",
-"SxGlobalMusicPlayer": "",
-"SxInput": "",
-"SxItemList": "",
-"SxJson": "",
-"SxListenServerPeer": "",
-"SxLoadCache": "",
-"SxLog": "",
-"SxLogPanel": "",
-"SxMath": "",
-"SxMotionBlur": "",
-"SxNetwork": "",
-"SxNode": "",
-"SxNodeTracer": "",
-"SxNodeTracerSystem": "",
-"SxNodeTracerUI": "",
-"SxOS": "",
-"SxRPCService": "",
-"SxRand": "",
-"SxSceneRunner": "",
-"SxSceneTransitioner": "",
-"SxServerPeer": "",
-"SxServerRPC": "",
-"SxShader": "",
-"SxShockwave": "",
-"SxSyncBarrier": "",
-"SxSyncInput": "",
-"SxSyncPeerInput": "",
-"SxText": "",
-"SxTileMap": "",
-"SxUI": "",
-"SxVignette": "",
-"SxVirtualButton": "",
-"SxVirtualControls": "",
-"SxVirtualJoystick": "",
-"TempAudioFX": "",
-"TileController": "",
-"Utils": "",
-"Wall": ""
-}
 
 [application]
 
@@ -488,12 +506,12 @@ config/icon="res://icon.png"
 
 [autoload]
 
-GameDebugPanel="*res://autoloads/GameDebugPanel.tscn"
-GameSceneTransitioner="*res://autoloads/GameSceneTransitioner.tscn"
-GameData="*res://autoloads/GameData.gd"
 GameCommandLine="*res://autoloads/GameCommandLine.gd"
-MainRPCService="*res://autoloads/MainRPCService.gd"
+GameData="*res://autoloads/GameData.gd"
+GameDebugPanel="*res://autoloads/GameDebugPanel.tscn"
 GameLoadCache="*res://autoloads/GameLoadCache.gd"
+GameSceneTransitioner="*res://autoloads/GameSceneTransitioner.tscn"
+MainRPCService="*res://autoloads/MainRPCService.gd"
 
 [debug]
 
@@ -508,7 +526,7 @@ window/stretch/aspect="keep"
 
 [engine]
 
-version="3.5"
+version="3.5.1"
 
 [gui]
 
@@ -519,6 +537,11 @@ common/drop_mouse_on_gui_input_disabled=true
 p1_bomb={
 "deadzone": 0.5,
 "events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":81,"unicode":0,"echo":false,"script":null)
+ ]
+}
+p1_move_down={
+"deadzone": 0.5,
+"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":83,"unicode":0,"echo":false,"script":null)
  ]
 }
 p1_move_left={
@@ -536,9 +559,19 @@ p1_move_up={
 "events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":87,"unicode":0,"echo":false,"script":null)
  ]
 }
-p1_move_down={
+p1_push={
 "deadzone": 0.5,
-"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":83,"unicode":0,"echo":false,"script":null)
+"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":69,"unicode":0,"echo":false,"script":null)
+ ]
+}
+p2_bomb={
+"deadzone": 0.5,
+"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":47,"unicode":0,"echo":false,"script":null)
+ ]
+}
+p2_move_down={
+"deadzone": 0.5,
+"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":16777234,"unicode":0,"echo":false,"script":null)
  ]
 }
 p2_move_left={
@@ -554,21 +587,6 @@ p2_move_right={
 p2_move_up={
 "deadzone": 0.5,
 "events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":16777232,"unicode":0,"echo":false,"script":null)
- ]
-}
-p2_move_down={
-"deadzone": 0.5,
-"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":16777234,"unicode":0,"echo":false,"script":null)
- ]
-}
-p2_bomb={
-"deadzone": 0.5,
-"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":47,"unicode":0,"echo":false,"script":null)
- ]
-}
-p1_push={
-"deadzone": 0.5,
-"events": [ Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":0,"alt":false,"shift":false,"control":false,"meta":false,"command":false,"pressed":false,"scancode":0,"physical_scancode":69,"unicode":0,"echo":false,"script":null)
  ]
 }
 p2_push={

@@ -1,4 +1,9 @@
-# SxGameDatas are used for global state handling and saving/loading datas.
+# Role:
+#   Global state handling of the game (inheriting SxGameData).
+#
+#   It acts like a "setting registry" for the current game, and can be used
+#   to store/load datas to disk.
+
 extends SxGameData
 
 const GameMode = Enums.GameMode

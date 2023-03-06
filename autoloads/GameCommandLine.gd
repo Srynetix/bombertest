@@ -1,3 +1,16 @@
+# Role:
+#   A command-line parser implementation (inheriting SxCmdLintParser).
+#
+#   It is used to parse specific command-line flags, to:
+#   - start a server,
+#   - start a client,
+#   - start a single-player game
+#   - enable websockets (instead of ENet)
+#   - set a specific map name
+#   - set a specific username
+#
+#   To do so, it simply uses the GameData class to store values.
+
 extends SxCmdLineParser
 
 func _handle_args(args: Args) -> void:
