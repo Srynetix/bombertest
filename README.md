@@ -1,6 +1,9 @@
 # Bombertest
 
 Simple Bomberman-like clone, for training purposes.
+
+![preview](./docs/promo.gif)
+
 It was made to explore the following domains:
 
 - AI (for bots),
